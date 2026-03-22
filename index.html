@@ -1555,6 +1555,7 @@ function doLogout(){
 // Restore session on page load
 window.addEventListener('DOMContentLoaded',async()=>{
   loadTheme();
+  handleOAuthRedirect();
   await initDB();
   if(restoreSession()){
     g('login-screen').style.display='none';
