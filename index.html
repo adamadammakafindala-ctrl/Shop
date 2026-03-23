@@ -174,6 +174,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--hover-row);}
 .c-disc-wrap{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);}
 .c-disc-wrap input{width:50px;padding:2px 5px;font-size:10px;display:inline;-moz-appearance:textfield;}
 .c-disc-wrap input::-webkit-inner-spin-button,.c-disc-wrap input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.c-disc-wrap input:focus:not([data-editing]){}
 
 /* Hide spinner arrows on number inputs in checkout */
 .no-spin::-webkit-inner-spin-button,.no-spin::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
@@ -633,11 +634,13 @@ body.light-mode .ai-msg-bot{background:#f0f2f5;color:#1a1a2e;}
       <div><label>From</label><input type="date" id="rep-from" style="width:150px"/></div>
       <div><label>To</label><input type="date" id="rep-to" style="width:150px"/></div>
       <div style="display:flex;align-items:flex-end;gap:7px">
-        <button class="btn btn-gold" onclick="genReports()">Generate</button>
         <button class="btn btn-ghost" onclick="setToday()">Today</button>
         <button class="btn btn-ghost" onclick="setThisWeek()">This Week</button>
         <button class="btn btn-ghost" onclick="setMonth()">This Month</button>
+        <button class="btn btn-ghost" onclick="setSixMonths()">6 Months</button>
+        <button class="btn btn-ghost" onclick="setOneYear()">1 Year</button>
         <button class="btn btn-ghost" onclick="printReports()">🖨️ Print</button>
+        <button class="btn btn-blue" onclick="openCashFlowModal()">📋 Cash Flow</button>
       </div>
     </div>
     <div id="rep-content">
@@ -1348,13 +1351,13 @@ body.light-mode .ai-msg-bot{background:#f0f2f5;color:#1a1a2e;}
 
 <!-- Expense Supplier Purchase Modal -->
 <div class="modal-overlay" id="modal-exp-sup-purchase" onclick="handleOverlayClick(event,'modal-exp-sup-purchase')">
-  <div class="modal" style="max-width:480px">
+  <div class="modal" style="max-width:540px">
     <div class="modal-title">🛍️ Record Purchase</div>
-    <div class="alert alert-info mb12" style="font-size:11px">Add all items bought in this visit.</div>
+    <div class="alert alert-info mb12" style="font-size:11px">Add all items bought in this visit. Enter qty and unit price — line total is calculated automatically.</div>
     <div id="exp-purch-items-list"></div>
     <button class="btn btn-ghost btn-sm mt8" onclick="addExpPurchItem()">+ Add Item</button>
-    <div class="flex justify-between mt10" style="font-size:13px;font-weight:700">
-      <span>Total:</span><span class="mono" id="exp-purch-total" style="color:var(--accent3)">₦0.00</span>
+    <div class="flex justify-between mt10" style="font-size:13px;font-weight:700;border-top:1px solid var(--border);padding-top:8px">
+      <span>Grand Total:</span><span class="mono" id="exp-purch-total" style="color:var(--accent3)">₦0.00</span>
     </div>
     <div class="form-row-2 mt8">
       <div><label>Date</label><input type="date" id="exp-purch-date"/></div>
@@ -1465,6 +1468,22 @@ body.light-mode .ai-msg-bot{background:#f0f2f5;color:#1a1a2e;}
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-add-room')">Cancel</button>
       <button class="btn btn-gold" onclick="saveRoom()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cash Flow / Bank Statement Modal -->
+<div class="modal-overlay" id="modal-cashflow" onclick="handleOverlayClick(event,'modal-cashflow')">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title">📋 Cash Flow Statement</div>
+    <div class="alert alert-info mb12" style="font-size:11px">Shows all money in and out for the selected period.</div>
+    <div class="form-row-2">
+      <div><label>From Date</label><input type="date" id="cf-from"/></div>
+      <div><label>To Date</label><input type="date" id="cf-to"/></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-cashflow')">Cancel</button>
+      <button class="btn btn-gold" onclick="printCashFlowStatement()">🖨️ Print Statement</button>
     </div>
   </div>
 </div>
@@ -1771,16 +1790,20 @@ function openAddItemModal(dest){
   const destination=dest||'shop';
   sv('fi-dest',destination);sv('fi-from-supplier','');sv('fi-selected-id','');
   sv('fi-item-search','');sv('fi-img','');sv('fi-low','');sv('fi-expiry','');
-  g('img-preview').innerHTML='<div style="font-size:30px">📷</div><p>Click to add photo</p>';
-  g('fi-new-fields').style.display='none';
-  g('fi-existing-qty').style.display='none';
+  const imgPrev=g('img-preview');
+  if(imgPrev)imgPrev.innerHTML='<div style="font-size:30px">📷</div><p>Click to add photo</p>';
+  const newFields=g('fi-new-fields');if(newFields)newFields.style.display='none';
+  const existQty=g('fi-existing-qty');if(existQty)existQty.style.display='none';
   const isRoom=destination!=='shop';
-  g('add-item-modal-title').textContent=isRoom?`➕ Add Item to ${destination}`:'➕ Add Item to Shop';
-  g('fi-save-btn').textContent='Save';
+  const titleEl=g('add-item-modal-title');
+  if(titleEl)titleEl.textContent=isRoom?`➕ Add Item to ${destination}`:'➕ Add Item to Shop';
+  const saveBtn=g('fi-save-btn');if(saveBtn)saveBtn.textContent='Save';
   // Init unit rows with one default
   newItemUnits=[{id:ts(),name:'',qtyInParent:1,costPrice:0,sellPrice:0}];
   renderNewItemUnitRows();
   fillSupSelects();closeItemDrop();
+  // Reset item search input and dropdown
+  const searchInput=g('fi-item-search');if(searchInput){searchInput.value='';searchInput.focus();}
   g('modal-add-item').classList.add('open');
 }
 
@@ -1891,7 +1914,9 @@ function saveAddItem(){
     }
     save();closeModal('modal-add-item');
     renderInventory();renderInvStats();renderPosItems();
-    if(currentRoom){renderRoomStats();renderRoomItems();renderRoomLog();}
+    if(isRoom){if(currentRoom===dest){renderRoomStats();renderRoomItems();renderRoomLog();}else if(currentRoom){renderRoomStats();renderRoomItems();renderRoomLog();}}
+    else if(currentRoom){renderRoomStats();renderRoomItems();renderRoomLog();}
+    refreshDeliveryCartItemSelects(selectedId);
     alert(`✅ Added ${breakdown.join(' + ')} of "${item.name}" to ${isRoom?dest:'Shop'}.`);
   } else {
     // NEW item
@@ -1927,6 +1952,7 @@ function saveAddItem(){
     save();closeModal('modal-add-item');
     renderInventory();renderInvStats();renderPosItems();
     if(currentRoom){renderRoomStats();renderRoomItems();renderRoomLog();}
+    refreshDeliveryCartItemSelects(newItem.id);
     alert(`✅ "${name}" created!${breakdown.length?' Stock: '+breakdown.join(' + '):''}`);
   }
 }
@@ -2001,7 +2027,7 @@ function renderInventory(){
   <td class="mono text-muted">₦${fmt(x.cost||0)}</td>
   <td class="stock-multi">${stockStr}</td>
   <td class="text-muted text-sm">${x.dateAdded?fmtDateTime(x.dateAdded):'—'}</td>
-  <td class="text-sm">${x.expiry?`<span class="badge ${es==='expired'?'badge-red':es==='soon'?'badge-yellow':'badge-green'}">${x.expiry}</span>`:'—'}</td>
+  <td class="text-sm">${x.expiry?`<span class="badge ${es==='expired'?'badge-red':es==='soon'?'badge-yellow':'badge-green'}">${fmtExpiry(x.expiry)}</span>`:'—'}</td>
   <td>${out?'<span class="badge badge-red">Out</span>':low?'<span class="badge badge-yellow">⚠ Low</span>':'<span class="badge badge-green">✓ OK</span>'}</td>
   ${ce?`<td onclick="event.stopPropagation()"><div class="flex gap8 flex-wrap"><button class="btn btn-ghost btn-sm" onclick="openEditItem('${x.id}')">✏️</button><button class="btn btn-blue btn-sm" onclick="openSendTo('${x.id}','shop')">📤</button><button class="btn btn-danger btn-sm" onclick="delItem('${x.id}')">Del</button></div></td>`:''}</tr>`;}).join('')}
   </tbody></table>`;
@@ -2043,6 +2069,19 @@ function fmtDate(dateStr){
   return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
 }
 function nowFormatted(){return fmtDateTime(new Date().toISOString());}
+function fmtExpiry(expiryStr){
+  if(!expiryStr)return'—';
+  // Already DD/MM/YYYY
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(expiryStr)){
+    const p=expiryStr.split('/');return p[0].padStart(2,'0')+'/'+p[1].padStart(2,'0')+'/'+p[2];
+  }
+  // YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}$/.test(expiryStr)){
+    const p=expiryStr.split('-');return p[2]+'/'+p[1]+'/'+p[0];
+  }
+  const d=new Date(expiryStr);if(!isNaN(d))return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+  return expiryStr;
+}
 
 function parseDateStr(s){
   if(!s)return 0;
@@ -2138,7 +2177,7 @@ function stockDisplay(item,qty){
   for(let i=0;i<units.length;i++){
     const count=Math.floor(rem/piecesPerUnit[i]);
     rem=rem%piecesPerUnit[i];
-    if(count>0)parts.push(`${count} ${units[i].name}`);
+    if(count>0)parts.push(`${units[i].name} ${count}`);
   }
   return parts.length?parts.join(' + '):`0 ${units[units.length-1].name}`;
 }
@@ -2368,7 +2407,7 @@ function renderCart(){
     <div class="c-info">
       <div class="c-name">${c.name}${c.unitName&&c.unitName!==c.name?` <span style="font-size:10px;color:var(--muted)">(${c.unitName})</span>`:''}</div>
       <div style="font-size:10px;color:var(--muted);margin-top:1px">₦${fmt(c.price)} each${c.disc>0?` − disc ₦${fmt(c.disc)}`:''} × ${c.qty} = <span style="color:var(--accent3);font-weight:700">₦${fmt(lineTotal)}</span></div>
-      <div class="c-disc-wrap">Disc ₦<input type="number" value="${c.disc}" style="width:48px;padding:1px 4px;font-size:10px" onchange="updateDisc('${c.id}','${c.cartKey}',this.value)" placeholder="0"/></div>
+      <div class="c-disc-wrap">Disc ₦<input type="number" value="${c.disc||''}" style="width:48px;padding:1px 4px;font-size:10px" onchange="updateDisc('${c.id}','${c.cartKey}',this.value)" placeholder="0"/></div>
     </div>
     <div style="display:flex;align-items:center;gap:4px">
       <button onclick="updateCartQty('${c.id}','${c.cartKey}',${c.qty-1})" style="width:28px;height:28px;border-radius:6px;background:var(--accent);border:none;color:#fff;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
@@ -3185,10 +3224,13 @@ function printSupStatement(){
     else{balance-=e.amount;return`<tr><td>${e.dateStr}</td><td>💳 Payment (${e.method})${e.note?' — '+e.note:''}</td><td>—</td><td style="color:#27ae60">-₦${fmt(e.amount)}</td><td style="color:${balance>0?'#c0392b':'#27ae60'}">${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
   }).join('');
   const owed=s.totalOwed||0;
+  // owed>0 = we owe them (red), owed<0 = they owe us (green), 0 = settled
+  const finalBalColor=owed>0?'#c0392b':owed<0?'#27ae60':'#333';
+  const finalBalText=owed>0?'₦'+fmt(owed):owed<0?'−₦'+fmt(Math.abs(owed)):'₦0.00 (Settled)';
   const leftInfo=`<strong>${s.name}</strong><br/>Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'} · Acct Name: ${s.accname||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''}`;
   g('print-area').innerHTML=printHeaderHtml(leftInfo,'Supplier Statement')
     +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:7px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:7px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Debt (+)</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Payment (-)</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>')+'</tbody></table>'
-    +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold">Final Balance: ${owed>0?'₦'+fmt(owed):owed===0?'₦0.00':'-₦'+fmt(Math.abs(owed))}</div></div>`;
+    +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${finalBalColor}">Final Balance: ${finalBalText}${owed<0?' (Supplier owes YOU)':owed>0?' (You owe supplier)':''}</div></div>`;
   closeModal('modal-sup-statement');window.print();
 }
 // =================== CUSTOMER DEBT ===================
@@ -3223,10 +3265,13 @@ function printCustStatement(){
     if(e.type==='purchase'){balance+=e.debt||0;const il=e.items.map(x=>`<div style="padding-left:12px;font-size:11px;color:#555">${x.name} ×${x.qty} · ₦${fmt(x.price)} = ₦${fmt(x.price*x.qty)}</div>`).join('');return`<tr><td>${e.dateStr}</td><td>🛒 Purchase (${e.orderType})<br/>${il}</td><td>₦${fmt(e.total)}</td><td>${e.debt>0?`+₦${fmt(e.debt)}`:'—'}</td><td style="color:${balance>0?'#c0392b':'#27ae60'}">${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
     else{balance-=e.amount;return`<tr><td>${e.dateStr}</td><td>💳 ${e.desc}</td><td>—</td><td style="color:#27ae60">-₦${fmt(e.amount)}</td><td style="color:${balance>0?'#c0392b':'#27ae60'}">${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
   }).join('');
+  // balance>0 = customer owes us (GREEN = receivable), balance<0 = we owe them (RED)
+  const custFinalColor=balance>0?'#27ae60':balance<0?'#c0392b':'#333';
+  const custFinalText=balance>0?'₦'+fmt(balance):balance<0?'−₦'+fmt(Math.abs(balance)):'₦0.00 (Settled)';
   const leftInfo=`<strong>${c.name}</strong><br/>Phone: ${c.phone||'—'} · Address: ${c.address||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''}`;
   g('print-area').innerHTML=printHeaderHtml(leftInfo,'Customer Statement')
     +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:7px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:7px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Amount</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Debt</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>')+'</tbody></table>'
-    +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold">Final Balance: ${balance>0?'₦'+fmt(balance):balance===0?'₦0.00':'-₦'+fmt(Math.abs(balance))}</div></div>`;
+    +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${custFinalColor}">Final Balance: ${custFinalText}${balance>0?' (Customer owes YOU)':balance<0?' (You owe customer)':''}</div></div>`;
   closeModal('modal-cust-statement');window.print();
 }
 // =================== THEME ===================
@@ -3400,10 +3445,12 @@ function openExpSupDetail(id){
   g('exp-sup-info-card').innerHTML=`<div style="font-size:15px;font-weight:800;margin-bottom:10px">${s.name}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
       <div><div class="stat-label">Phone</div><div>${s.phone||'—'}</div></div>
-      <div><div class="stat-label">Account</div><div class="mono">${s.account||'—'}</div></div>
-      <div><div class="stat-label">Account Name</div><div>${s.accname||'—'}</div></div>
-      <div><div class="stat-label">Bank</div><div>${s.bank||'—'}</div></div>
+      <div><div class="stat-label">Account Number</div><div class="mono">${s.account||'—'}</div></div>
       <div><div class="stat-label">Address</div><div>${s.addr||'—'}</div></div>
+      <div><div class="stat-label">Bank</div><div>${s.bank||'—'}</div></div>
+      <div><div class="stat-label">Date Added</div><div style="color:var(--muted);font-size:11px">${s.addedDate||'—'}</div></div>
+      <div><div class="stat-label">Account Name</div><div>${s.accname||'—'}</div></div>
+      ${s.notes?`<div style="grid-column:1/-1"><div class="stat-label">Notes</div><div style="color:var(--muted);font-size:12px">${s.notes}</div></div>`:''}
     </div>`;
   const pays=s.payments||[];
   g('exp-sup-pay-hist').innerHTML=pays.length?pays.map(p=>`<div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
@@ -3411,7 +3458,11 @@ function openExpSupDetail(id){
     <div class="text-muted text-sm">${p.date}${p.note?' · '+p.note:''}</div></div>`).join(''):'<div class="text-muted text-sm">No payments yet.</div>';
   const purch=s.purchases||[];
   g('exp-sup-purch-hist').innerHTML=purch.length?`<table><thead><tr><th>Date</th><th>Items</th><th>Total</th></tr></thead><tbody>
-  ${purch.map(p=>`<tr><td class="text-muted text-sm">${p.date}</td><td class="text-sm">${(p.items||[]).map(i=>`${i.name}: ₦${fmt(i.price)}`).join(', ')}</td>
+  ${purch.map(p=>`<tr><td class="text-muted text-sm">${p.date}</td>
+  <td class="text-sm">${(p.items||[]).map(i=>{
+    if(i.qty&&i.unitPrice)return`${i.name}: ${i.qty} × ₦${fmt(i.unitPrice)} = ₦${fmt(i.lineTotal||i.price)}`;
+    return`${i.name}: ₦${fmt(i.price)}`;
+  }).join('<br/>')}</td>
   <td class="mono" style="color:var(--accent)">₦${fmt(p.total)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty-state"><p>No purchases yet.</p></div>';
 }
 function closeExpSupDetail(){currentExpSupId=null;g('exp-list-view').style.display='block';g('exp-sup-detail-view').style.display='none';renderExpSupplierCards();renderExpenses();updateBalanceCards();}
@@ -3437,20 +3488,44 @@ function addExpPurchItem(){
   const saved=DB.savedSupplyItems||[];
   const opts=saved.map(i=>`<option value="${i}">${i}</option>`).join('');
   const row=document.createElement('div');row.id='epi-'+n;
-  row.style.cssText='display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:flex-end;margin-bottom:8px';
-  row.innerHTML=`<div><label>Item</label><input list="spl-${n}" id="epi-name-${n}" placeholder="Item name..." oninput="calcExpPurchTotal()"/><datalist id="spl-${n}">${opts}</datalist></div>
-  <div><label>Price ₦</label><input type="number" id="epi-price-${n}" placeholder="0" oninput="calcExpPurchTotal()"/></div>
-  <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="g('epi-${n}').remove();calcExpPurchTotal()">×</button>`;
+  row.style.cssText='background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px';
+  row.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 70px 100px 90px auto;gap:7px;align-items:flex-end">
+      <div><label>Item</label><input list="spl-${n}" id="epi-name-${n}" placeholder="Item name..." oninput="calcExpPurchRow(${n})"/><datalist id="spl-${n}">${opts}</datalist></div>
+      <div><label>Qty</label><input type="number" id="epi-qty-${n}" placeholder="1" min="1" value="1" oninput="calcExpPurchRow(${n})"/></div>
+      <div><label>Unit Price ₦</label><input type="number" id="epi-price-${n}" placeholder="0" oninput="calcExpPurchRow(${n})"/></div>
+      <div><label>Line Total</label><input type="number" id="epi-total-${n}" placeholder="0" readonly style="color:var(--accent3);background:transparent"/></div>
+      <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="g('epi-${n}').remove();calcExpPurchTotal()">×</button>
+    </div>`;
   g('exp-purch-items-list').appendChild(row);
 }
-function calcExpPurchTotal(){let t=0;document.querySelectorAll('[id^="epi-price-"]').forEach(el=>t+=parseFloat(el.value)||0);const el=g('exp-purch-total');if(el)el.textContent='₦'+fmt(t);}
+function calcExpPurchRow(n){
+  const qty=parseFloat(g('epi-qty-'+n)?.value)||0;
+  const price=parseFloat(g('epi-price-'+n)?.value)||0;
+  const total=qty*price;
+  const el=g('epi-total-'+n);if(el)el.value=total?total.toFixed(2):'';
+  calcExpPurchTotal();
+}
+function calcExpPurchTotal(){
+  let t=0;document.querySelectorAll('[id^="epi-total-"]').forEach(el=>t+=parseFloat(el.value)||0);
+  const el=g('exp-purch-total');if(el)el.textContent='₦'+fmt(t);
+}
 function openExpSupPurchase(){g('exp-purch-items-list').innerHTML='';expPurchCount=0;g('exp-purch-date').value=new Date().toISOString().split('T')[0];sv('exp-purch-note','');g('exp-purch-total').textContent='₦0.00';addExpPurchItem();g('modal-exp-sup-purchase').classList.add('open');}
 function saveExpSupPurchase(){
   const s=(DB.expSuppliers||[]).find(x=>x.id===currentExpSupId);if(!s)return;
   const items=[];let total=0;
   document.querySelectorAll('[id^="epi-name-"]').forEach(el=>{
-    const n=el.id.replace('epi-name-','');const name=el.value.trim();const price=parseFloat(g('epi-price-'+n)?.value)||0;
-    if(name&&price>0){items.push({name,price});total+=price;if(!DB.savedSupplyItems)DB.savedSupplyItems=[];if(!DB.savedSupplyItems.includes(name))DB.savedSupplyItems.push(name);}
+    const n=el.id.replace('epi-name-','');
+    const name=el.value.trim();
+    const qty=parseFloat(g('epi-qty-'+n)?.value)||1;
+    const unitPrice=parseFloat(g('epi-price-'+n)?.value)||0;
+    const lineTotal=parseFloat(g('epi-total-'+n)?.value)||(qty*unitPrice);
+    if(name&&lineTotal>0){
+      items.push({name,qty,unitPrice,price:lineTotal,lineTotal});
+      total+=lineTotal;
+      if(!DB.savedSupplyItems)DB.savedSupplyItems=[];
+      if(!DB.savedSupplyItems.includes(name))DB.savedSupplyItems.push(name);
+    }
   });
   if(!items.length){alert('Add at least one item with a price.');return;}
   if(!s.purchases)s.purchases=[];
@@ -3476,11 +3551,15 @@ function printExpSupStatement(){
     if(e.type==='purchase'){balance+=e.total;return`<tr><td>${e.dateStr}</td><td>🛍️ ${(e.items||[]).map(i=>i.name).join(', ')}</td><td style="color:#c0392b">+₦${fmt(e.total)}</td><td>—</td><td>${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
     else{balance-=e.amount;return`<tr><td>${e.dateStr}</td><td>💳 Payment (${e.method})</td><td>—</td><td style="color:#27ae60">-₦${fmt(e.amount)}</td><td>${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
   }).join('');
+  const expSupOwed=s.totalOwed||0;
+  // expSupOwed>0 = we owe them (red), expSupOwed<0 = they owe us (green)
+  const expFinalColor=expSupOwed>0?'#c0392b':expSupOwed<0?'#27ae60':'#333';
+  const expFinalText=expSupOwed>0?'₦'+fmt(expSupOwed):expSupOwed<0?'−₦'+fmt(Math.abs(expSupOwed)):'₦0.00 (Settled)';
   const leftInfo=`<strong>${s.name}</strong><br/>Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'}`;
   g('print-area').innerHTML=printHeaderHtml(leftInfo,'Expense Supplier Statement')
     +'<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:6px;border:1px solid #ccc">Date</th><th style="padding:6px;border:1px solid #ccc">Description</th><th style="padding:6px;border:1px solid #ccc">Debit</th><th style="padding:6px;border:1px solid #ccc">Credit</th><th style="padding:6px;border:1px solid #ccc">Balance</th></tr></thead>'
     +'<tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:12px">No transactions</td></tr>')+'</tbody></table>'
-    +`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold">Final Balance: ${(s.totalOwed||0)>=0?'₦'+fmt(s.totalOwed||0):'-₦'+fmt(Math.abs(s.totalOwed||0))}</div></div>`;
+    +`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${expFinalColor}">Final Balance: ${expFinalText}${expSupOwed<0?' (Supplier owes YOU)':expSupOwed>0?' (You owe supplier)':''}</div></div>`;
   window.print();
 }
 // =================== GENERAL EXPENSES ===================
@@ -3976,6 +4055,121 @@ function setThisWeek(){
   genReports();
 }
 function setMonth(){const now=new Date();sv('rep-from',new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0]);sv('rep-to',now.toISOString().split('T')[0]);genReports();}
+function setSixMonths(){const now=new Date();const from=new Date(now.getFullYear(),now.getMonth()-5,1);sv('rep-from',from.toISOString().split('T')[0]);sv('rep-to',now.toISOString().split('T')[0]);genReports();}
+function setOneYear(){const now=new Date();const from=new Date(now.getFullYear()-1,now.getMonth(),now.getDate());sv('rep-from',from.toISOString().split('T')[0]);sv('rep-to',now.toISOString().split('T')[0]);genReports();}
+function openCashFlowModal(){
+  // Pre-fill dates from current reports range
+  const f=g('rep-from')?.value||new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().split('T')[0];
+  const t=g('rep-to')?.value||new Date().toISOString().split('T')[0];
+  sv('cf-from',f);sv('cf-to',t);
+  openModal('modal-cashflow');
+}
+function printCashFlowStatement(){
+  const from=v('cf-from'),to=v('cf-to');
+  const fromDt=from?new Date(from+' 00:00:00'):null;
+  const toDt=to?new Date(to+' 23:59:59'):null;
+  function inRange(d){const dt=new Date(d);if(isNaN(dt))return true;if(fromDt&&dt<fromDt)return false;if(toDt&&dt>toDt)return false;return true;}
+  // MONEY IN
+  const salesRecs=(DB.receipts||[]).filter(r=>inRange(r.date));
+  const totalSales=salesRecs.reduce((s,r)=>s+r.total,0);
+  const cashIn=salesRecs.reduce((s,r)=>s+(r.payments?.cash||0),0);
+  const transferIn=salesRecs.reduce((s,r)=>s+(r.payments?.transfer||0),0);
+  const posIn=salesRecs.reduce((s,r)=>s+(r.payments?.pos||0),0);
+  // Debt repayments received from customers
+  const debtIn=(DB.customers||[]).reduce((sum,c)=>{
+    return sum+(c.debtHistory||[]).filter(d=>d.type==='payment'&&inRange(d.date)).reduce((s,d)=>s+d.amount,0);
+  },0);
+  // Supplier overpayment refunds (supplier owes us payments received)
+  const supRefunds=(DB.suppliers||[]).reduce((sum,s)=>{
+    return sum+(s.payments||[]).filter(p=>inRange(p.date)&&(p.amount<0)).reduce((acc,p)=>acc+Math.abs(p.amount),0);
+  },0);
+  const totalIn=totalSales+debtIn;
+  // MONEY OUT
+  const supPayments=(DB.suppliers||[]).reduce((sum,s)=>{
+    return sum+(s.payments||[]).filter(p=>inRange(p.date)&&p.type!=='products').reduce((acc,p)=>acc+(p.moneyAmt||p.amount||0),0);
+  },0);
+  const expSupPayments=(DB.expSuppliers||[]).reduce((sum,s)=>{
+    return sum+(s.payments||[]).filter(p=>inRange(p.date)).reduce((acc,p)=>acc+p.amount,0);
+  },0);
+  const generalExp=(DB.expenses||[]).filter(e=>inRange(e.date)).reduce((s,e)=>s+e.amount,0);
+  const totalOut=supPayments+expSupPayments+generalExp;
+  const netFlow=totalIn-totalOut;
+  // Build detail rows
+  const inRows=[];
+  const salesByDay={};
+  salesRecs.forEach(r=>{const d=fmtDate(r.date);if(!salesByDay[d])salesByDay[d]={n:0,t:0};salesByDay[d].n++;salesByDay[d].t+=r.total;});
+  Object.entries(salesByDay).sort((a,b)=>parseDateStr(a[0])-parseDateStr(b[0])).forEach(([d,x])=>{
+    inRows.push(`<tr><td>${d}</td><td>🛒 Sales (${x.n} transactions)</td><td style="color:#27ae60;text-align:right">₦${fmt(x.t)}</td></tr>`);
+  });
+  if(debtIn>0)inRows.push(`<tr><td>—</td><td>💳 Customer Debt Payments</td><td style="color:#27ae60;text-align:right">₦${fmt(debtIn)}</td></tr>`);
+  const outRows=[];
+  (DB.suppliers||[]).forEach(s=>{
+    const pays=s.payments.filter(p=>inRange(p.date)&&p.type!=='products');
+    pays.forEach(p=>outRows.push(`<tr><td>${fmtDate(p.date)}</td><td>🤝 Supplier Payment — ${s.name}${p.note?' ('+p.note+')':''}</td><td style="color:#c0392b;text-align:right">₦${fmt(p.moneyAmt||p.amount)}</td></tr>`));
+  });
+  (DB.expSuppliers||[]).forEach(s=>{
+    const pays=(s.payments||[]).filter(p=>inRange(p.date));
+    pays.forEach(p=>outRows.push(`<tr><td>${fmtDate(p.date)}</td><td>🏪 Exp. Supplier — ${s.name}${p.note?' ('+p.note+')':''}</td><td style="color:#c0392b;text-align:right">₦${fmt(p.amount)}</td></tr>`));
+  });
+  (DB.expenses||[]).filter(e=>inRange(e.date)).forEach(e=>{
+    outRows.push(`<tr><td>${fmtDate(e.date)}</td><td>💰 ${EXP_CATS[e.category]||e.category} — ${e.desc||'—'}</td><td style="color:#c0392b;text-align:right">₦${fmt(e.amount)}</td></tr>`);
+  });
+  outRows.sort((a,b)=>0);// already date-ordered per source
+  const ss=DB.shopSettings||{};
+  const periodStr=(from||'Beginning')+' to '+(to||'Today');
+  const netColor=netFlow>=0?'#27ae60':'#c0392b';
+  g('print-area').innerHTML=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div><h2 style="font-size:16px;margin:0 0 4px">${ss.name||'Ado Salisu Sarki Mai Charbi'}</h2>
+        ${ss.address?`<p style="font-size:11px;color:#555;margin:2px 0">${ss.address}</p>`:''}
+      </div>
+      <div style="text-align:right;font-size:11px;color:#555">
+        <div style="font-size:14px;font-weight:700;color:#000">📋 Cash Flow Statement</div>
+        <div>Period: ${periodStr}</div><div>Printed: ${nowFormatted()}</div>
+      </div>
+    </div>
+    <hr style="margin:8px 0"/>
+    <!-- Summary cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:#276749;font-weight:700;text-transform:uppercase">Total Money In</div>
+        <div style="font-size:20px;font-weight:800;color:#27ae60">₦${fmt(totalIn)}</div>
+        <div style="font-size:10px;color:#555">Sales + Debt Collections</div>
+      </div>
+      <div style="background:#fff5f5;border:1px solid #fed7d7;border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:#9b2c2c;font-weight:700;text-transform:uppercase">Total Money Out</div>
+        <div style="font-size:20px;font-weight:800;color:#c0392b">₦${fmt(totalOut)}</div>
+        <div style="font-size:10px;color:#555">Suppliers + Expenses</div>
+      </div>
+      <div style="background:${netFlow>=0?'#f0fff4':'#fff5f5'};border:1px solid ${netFlow>=0?'#c6f6d5':'#fed7d7'};border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:${netColor};font-weight:700;text-transform:uppercase">Net Flow</div>
+        <div style="font-size:20px;font-weight:800;color:${netColor}">₦${fmt(Math.abs(netFlow))}</div>
+        <div style="font-size:10px;color:#555">${netFlow>=0?'Surplus':'Deficit'}</div>
+      </div>
+    </div>
+    <!-- Payment method breakdown -->
+    <div style="margin-bottom:16px;padding:10px;background:#f9f9f9;border:1px solid #eee;border-radius:6px;font-size:12px">
+      <strong>Sales by Payment Method:</strong>&nbsp;
+      Cash: ₦${fmt(cashIn)} &nbsp;|&nbsp; Transfer: ₦${fmt(transferIn)} &nbsp;|&nbsp; POS: ₦${fmt(posIn)}
+    </div>
+    <!-- Money In detail -->
+    <h3 style="font-size:13px;color:#27ae60;margin:0 0 6px;border-bottom:2px solid #27ae60;padding-bottom:4px">💚 Money In — ₦${fmt(totalIn)}</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px">
+      <thead><tr style="background:#f0fff4"><th style="padding:6px;border:1px solid #c6f6d5;text-align:left">Date</th><th style="padding:6px;border:1px solid #c6f6d5;text-align:left">Description</th><th style="padding:6px;border:1px solid #c6f6d5;text-align:right">Amount</th></tr></thead>
+      <tbody>${inRows.join('')||'<tr><td colspan="3" style="padding:8px;text-align:center;color:#999">No income in this period</td></tr>'}</tbody>
+    </table>
+    <!-- Money Out detail -->
+    <h3 style="font-size:13px;color:#c0392b;margin:0 0 6px;border-bottom:2px solid #c0392b;padding-bottom:4px">❤️ Money Out — ₦${fmt(totalOut)}</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px">
+      <thead><tr style="background:#fff5f5"><th style="padding:6px;border:1px solid #fed7d7;text-align:left">Date</th><th style="padding:6px;border:1px solid #fed7d7;text-align:left">Description</th><th style="padding:6px;border:1px solid #fed7d7;text-align:right">Amount</th></tr></thead>
+      <tbody>${outRows.join('')||'<tr><td colspan="3" style="padding:8px;text-align:center;color:#999">No outgoings in this period</td></tr>'}</tbody>
+    </table>
+    <div style="padding:12px;background:${netFlow>=0?'#f0fff4':'#fff5f5'};border:2px solid ${netColor};border-radius:8px;font-weight:bold;font-size:14px;color:${netColor};text-align:center">
+      NET CASH FLOW: ${netFlow>=0?'+':'−'}₦${fmt(Math.abs(netFlow))} (${netFlow>=0?'SURPLUS':'DEFICIT'})
+    </div>
+  </div>`;
+  closeModal('modal-cashflow');window.print();
+}
 function printReports(){
   g('print-area').innerHTML=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
     <h2>${DB.shopSettings?.name||'Ado Salisu Sarki Mai Charbi'}</h2>
@@ -4596,8 +4790,7 @@ function saveAISettings(){
   appendAIMsg('bot',mode==='online'&&key?'✅ Online mode enabled. Using Claude API.':'✅ Offline mode active. Using local knowledge base.');
 }
 
-async 
-function buildShopContext(){
+async function buildShopContext(){
   const items=(DB.items||[]).slice(0,30).map(x=>`${x.name}: qty=${x.qty}, price=₦${x.price}, cost=₦${x.cost||0}`).join('\n');
   const lowStock=(DB.items||[]).filter(x=>x.qty<=(x.low||5)&&x.qty>0).map(x=>x.name).join(', ');
   const outStock=(DB.items||[]).filter(x=>x.qty===0).map(x=>x.name).join(', ');
@@ -4621,12 +4814,12 @@ function openEditItem(id){
     g('ei-price').previousElementSibling&&(g('ei-price').previousElementSibling.style.display='none');
     const unitPriceSection=document.getElementById('ei-unit-prices');
     if(unitPriceSection){
-      unitPriceSection.innerHTML=units.map((u,i)=>`<div class="form-row"><label>${u.name} Sell Price (₦)</label><input type="number" id="ei-unit-price-${i}" value="${u.sellPrice||0}" oninput="onEiUnitPriceChange(${i})"/></div>`).join('');
+      unitPriceSection.innerHTML=units.map((u,i)=>`<div class="form-row"><label>${u.name} Sell Price (₦)</label><input type="number" id="ei-unit-price-${i}" value="${u.sellPrice||''}" placeholder="0" oninput="onEiUnitPriceChange(${i})"/></div>`).join('');
       unitPriceSection.style.display='block';
     }
   }else{
     g('ei-price').style.display='';
-    sv('ei-price',x.price);
+    sv('ei-price',x.price||'');
     const unitPriceSection=document.getElementById('ei-unit-prices');
     if(unitPriceSection)unitPriceSection.style.display='none';
   }
@@ -4776,7 +4969,13 @@ function addDeliveryCartRow(){
   const itemOpts = (DB.items||[]).map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   row.innerHTML = `<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:flex-start">
     <div>
-      <div class="form-row"><label>Item</label><select id="dcr-item-${n}" onchange="onDeliveryCartItemChange(${n})"><option value="">— Select item —</option>${itemOpts}</select></div>
+      <div class="form-row">
+        <label>Item</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="dcr-item-${n}" onchange="onDeliveryCartItemChange(${n})" style="flex:1"><option value="">— Select item —</option>${itemOpts}</select>
+          <button class="btn btn-ghost btn-sm" style="white-space:nowrap;flex-shrink:0" onclick="openAddItemFromDelivery(${n})" title="Add new product">➕ New</button>
+        </div>
+      </div>
       <div id="dcr-qty-section-${n}" style="display:none">
         <div id="dcr-unit-qtys-${n}"></div>
         <div class="form-row-2"><div><label>Cost Price (₦) per largest unit</label><input type="number" id="dcr-cost-${n}" placeholder="0" oninput="calcDeliveryCartRow(${n})"/></div><div><label>Row Total (₦)</label><input type="number" id="dcr-total-${n}" readonly style="color:var(--accent3)"/></div></div>
@@ -4830,6 +5029,31 @@ function calcDeliveryCartTotal(){
   let grand=0;
   deliveryCartRows.forEach(n=>{ grand+=parseFloat(g(`dcr-total-${n}`)?.value)||0; });
   const el=g('del-grand-total');if(el)el.textContent='₦'+Number(grand).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// Refresh all delivery cart item selects after a new item is added
+var _pendingDeliveryCartRow = null;
+function openAddItemFromDelivery(rowNum){
+  _pendingDeliveryCartRow = rowNum;
+  openAddItemModal('shop');
+}
+
+// Called after saveAddItem succeeds — auto-select the new item in the pending cart row
+function refreshDeliveryCartItemSelects(newItemId){
+  const itemOpts = (DB.items||[]).map(x=>`<option value="${x.id}"${x.id===newItemId?' selected':''}>${x.name}</option>`).join('');
+  deliveryCartRows.forEach(n=>{
+    const sel = g(`dcr-item-${n}`);
+    if(!sel) return;
+    const curVal = sel.value;
+    sel.innerHTML = `<option value="">— Select item —</option>${itemOpts}`;
+    if(curVal) sel.value = curVal;
+  });
+  // Auto-select in the pending row
+  if(_pendingDeliveryCartRow !== null && newItemId){
+    const sel = g(`dcr-item-${_pendingDeliveryCartRow}`);
+    if(sel){ sel.value = newItemId; onDeliveryCartItemChange(_pendingDeliveryCartRow); }
+    _pendingDeliveryCartRow = null;
+  }
 }
 
 function recordDeliveryCart(){
@@ -5055,10 +5279,15 @@ function toggleAIChat() {
   var win = g("ai-chat-window");
   var fab = g("ai-chat-fab");
   if(!win || !fab) return;
-  ShopAI.open = !ShopAI.open;
-  win.style.display = ShopAI.open ? "flex" : "none";
-  fab.classList.toggle("open", ShopAI.open);
-  if(ShopAI.open) {
+  var isOpen = win.style.display === 'flex';
+  if(isOpen){
+    win.style.display = 'none';
+    fab.classList.remove('open');
+    if(typeof ShopAI !== 'undefined') ShopAI.open = false;
+  } else {
+    win.style.display = 'flex';
+    fab.classList.add('open');
+    if(typeof ShopAI !== 'undefined') ShopAI.open = true;
     // Load saved AI settings
     var savedMode = localStorage.getItem("shopdb_ai_mode")||"offline";
     var savedKey = localStorage.getItem("shopdb_ai_key")||"";
@@ -5066,8 +5295,8 @@ function toggleAIChat() {
     if(modeSel) modeSel.value = savedMode;
     var keyInp = g("ai-api-key");
     if(keyInp && savedKey) keyInp.value = savedKey;
-    if(g("ai-chat-messages").children.length === 0) {
-      appendAIMsg("bot", ShopAI.greetings["en"]);
+    if(g("ai-chat-messages") && g("ai-chat-messages").children.length === 0) {
+      appendAIMsg("bot", (typeof ShopAI !== 'undefined') ? ShopAI.greetings["en"] : "Hi! How can I help?");
     }
     setTimeout(function(){ var el=g("ai-chat-input"); if(el)el.focus(); }, 100);
   }
@@ -5134,80 +5363,10 @@ function hideAITyping() {
 
 
 <script>
-// ===== SAFARI IPAD STORAGE FIX =====
-_historyRotateTimer = null;
-
-function rotateBackupHistory() {
-  try {
-    const current = JSON.stringify(DB);
-    for (let i = 5; i >= 2; i--) {
-      const prev = localStorage.getItem('shopdb_history_' + (i - 1));
-      if (prev) { try { localStorage.setItem('shopdb_history_' + i, prev); } catch(e) {} }
-      const prevTime = localStorage.getItem('shopdb_history_' + (i - 1) + '_time');
-      if (prevTime) { try { localStorage.setItem('shopdb_history_' + i + '_time', prevTime); } catch(e) {} }
-    }
-    localStorage.setItem('shopdb_history_1', current);
-    localStorage.setItem('shopdb_history_1_time', new Date().toLocaleString());
-  } catch(e) {
-    try {
-      for (let i = 1; i <= 5; i++) { localStorage.removeItem('shopdb_history_' + i); localStorage.removeItem('shopdb_history_' + i + '_time'); }
-      localStorage.setItem('shopdb_history_1', JSON.stringify(DB));
-      localStorage.setItem('shopdb_history_1_time', new Date().toLocaleString());
-    } catch(e2) {}
-  }
-}
-
-function trimDBForStorage() {
-  if ((DB.itemHistory||[]).length > 300) DB.itemHistory = DB.itemHistory.slice(-300);
-  if ((DB.roomLogs||[]).length > 200) DB.roomLogs = DB.roomLogs.slice(-200);
-  if ((DB.priceHistory||[]).length > 100) DB.priceHistory = DB.priceHistory.slice(-100);
-  if ((DB.receipts||[]).length > 500) DB.receipts = DB.receipts.slice(-500);
-  if ((DB.expenses||[]).length > 300) DB.expenses = DB.expenses.slice(-300);
-  if ((DB.supPayReceipts||[]).length > 200) DB.supPayReceipts = DB.supPayReceipts.slice(-200);
-}
-
-function freeStorageSpace() {
-  for (let i = 1; i <= 5; i++) { localStorage.removeItem('shopdb_history_' + i); localStorage.removeItem('shopdb_history_' + i + '_time'); }
-  localStorage.removeItem('shopdb_auto_backup'); localStorage.removeItem('shopdb_auto_backup_time');
-  localStorage.removeItem('shopdb_gdrive_pending');
-}
-
-function save() {
-  trimDBForStorage();
-  try { localStorage.setItem('shopdb_v3', JSON.stringify(DB)); }
-  catch(e) {
-    try { freeStorageSpace(); localStorage.setItem('shopdb_v3', JSON.stringify(DB)); }
-    catch(e2) {
-      try {
-        const slim = { items:DB.items, receipts:(DB.receipts||[]).slice(-300), suppliers:DB.suppliers, customers:DB.customers, storerooms:DB.storerooms, staff:DB.staff, shopSettings:DB.shopSettings, expSuppliers:DB.expSuppliers, expenses:(DB.expenses||[]).slice(-300), rooms:DB.rooms, receiptCounter:DB.receiptCounter, lastBackup:DB.lastBackup, savedSupplyItems:DB.savedSupplyItems, itemHistory:[], roomLogs:[], priceHistory:[] };
-        freeStorageSpace(); localStorage.setItem('shopdb_v3', JSON.stringify(slim));
-        DB.itemHistory=[]; DB.roomLogs=[]; DB.priceHistory=[];
-      } catch(e3) { console.error('Save failed completely:', e3); }
-    }
-  }
-  try { if (currentUser) localStorage.setItem('shopdb_session', JSON.stringify({id:currentUser.id,ts:Date.now()})); } catch(e) {}
-  clearTimeout(_historyRotateTimer);
-  _historyRotateTimer = setTimeout(rotateBackupHistory, 60000);
-  try {
-    if (localStorage.getItem('shopdb_gdrive_token')) {
-      clearTimeout(_saveDebounceTimer);
-      _saveDebounceTimer = setTimeout(async () => {
-        if (navigator.onLine) { await uploadAndMerge(); }
-        else { localStorage.setItem('shopdb_gdrive_pending', 'true'); }
-      }, 10000);
-    }
-  } catch(e) {}
-}
-
-function load() {
-  try {
-    const d = localStorage.getItem('shopdb_v3');
-    if (d) { DB = JSON.parse(d); if (DB.rooms && DB.rooms.length) { ROOMS.length=0; DB.rooms.forEach(r=>ROOMS.push(r)); ROOMS.forEach(r=>{if(!DB.storerooms[r])DB.storerooms[r]=[];}); } }
-  } catch(e) {}
-}
-
-window.addEventListener('DOMContentLoaded', () => { setTimeout(()=>{ let t=0; for(let k in localStorage){ if(localStorage.hasOwnProperty(k)) t+=(localStorage.getItem(k)||'').length+k.length; } if(t>4000000) console.warn('Storage getting full! Backup recommended.'); }, 3000); });
-console.log('✅ Safari Storage Fix loaded.');
+// ===== SAFARI COMPATIBILITY: Ensure IDB is used, no localStorage override =====
+// All save/load handled by IndexedDB engine above.
+// This block intentionally left minimal — do NOT redefine save() or load() here.
+console.log('✅ Storage engine: IndexedDB (no localStorage override).');
 </script>
 </body>
 </html>
