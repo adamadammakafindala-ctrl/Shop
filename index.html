@@ -174,6 +174,10 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--hover-row);}
 .c-disc-wrap{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);}
 .c-disc-wrap input{width:50px;padding:2px 5px;font-size:10px;display:inline;-moz-appearance:textfield;}
 .c-disc-wrap input::-webkit-inner-spin-button,.c-disc-wrap input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+
+/* Hide spinner arrows on number inputs in checkout */
+.no-spin::-webkit-inner-spin-button,.no-spin::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.no-spin{-moz-appearance:textfield;}
 .c-qty-in{width:46px;text-align:center;padding:4px;font-size:11px;-moz-appearance:textfield;}
 .c-qty-in::-webkit-inner-spin-button,.c-qty-in::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 .c-price{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);width:80px;text-align:right;flex-shrink:0;}
@@ -257,8 +261,35 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--hover-row);}
 .sugg-box{position:absolute;background:#1a1a2e;border:1px solid #3a3a5a;border-radius:8px;width:100%;z-index:100;top:2px;}
 .sugg-item{padding:7px 12px;font-size:12px;cursor:pointer;color:#ddd;border-bottom:1px solid #2a2a4a;}
 .sugg-item:last-child{border-bottom:none;}.sugg-item:hover{background:rgba(245,166,35,0.1);color:var(--accent3);}
-@media print{body>*:not(#print-area){display:none!important;}#print-area{display:block!important;}}
+
+/* AI CHAT ASSISTANT */
+#ai-chat-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--accent3);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,0.35);transition:all 0.2s;user-select:none;border:none;}
+#ai-chat-fab:hover{transform:scale(1.1);}
+#ai-chat-fab.open{background:var(--surface2);font-size:18px;}
+#ai-chat-window{position:fixed;bottom:92px;right:24px;width:320px;background:var(--surface);border:1px solid var(--border);border-radius:18px;z-index:999;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.35);overflow:hidden;}
+#ai-chat-header{background:var(--surface2);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+#ai-chat-messages{overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:180px;max-height:280px;}
+#ai-chat-messages::-webkit-scrollbar{width:4px;}#ai-chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.ai-msg-user{background:var(--accent3);color:#000;padding:8px 12px;border-radius:14px 14px 4px 14px;align-self:flex-end;max-width:80%;font-size:12px;font-weight:600;word-break:break-word;}
+.ai-msg-bot{background:var(--surface2);color:var(--text);padding:8px 12px;border-radius:14px 14px 14px 4px;align-self:flex-start;max-width:88%;font-size:12px;white-space:pre-wrap;line-height:1.6;word-break:break-word;}
+.ai-typing{display:flex;gap:4px;padding:10px 12px;align-self:flex-start;}
+.ai-typing span{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:aiDot 1s infinite;}
+.ai-typing span:nth-child(2){animation-delay:0.2s;}.ai-typing span:nth-child(3){animation-delay:0.4s;}
+@keyframes aiDot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+#ai-chat-input-wrap{display:flex;gap:7px;padding:10px 12px;border-top:1px solid var(--border);}
+#ai-chat-input{flex:1;padding:8px 12px;border-radius:20px;font-size:12px;border:1.5px solid var(--input-border);background:var(--input-bg);color:var(--text);outline:none;}
+#ai-chat-input:focus{border-color:var(--accent3);}
+#ai-chat-send{background:var(--accent3);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#000;}
+body.light-mode .ai-msg-bot{background:#f0f2f5;color:#1a1a2e;}
+
+
+@media print{
+  body>*:not(#print-area){display:none!important;}
+  #print-area{display:block!important;}
+  @page{margin:1cm;}
+}
 #print-area{display:none;}
+
 </style>
 </head>
 <body>
@@ -378,14 +409,19 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--hover-row);}
         <div id="cart-list" style="min-height:50px;max-height:240px;overflow-y:auto"></div>
         <div class="total-box">
           <div class="total-row"><span>Subtotal</span><span class="mono" id="cart-sub">₦0.00</span></div>
-          <div class="total-row" id="disc-row" style="display:none"><span>Discounts</span><span class="mono" style="color:var(--accent)" id="cart-disc">-₦0.00</span></div>
+          <div class="total-row" id="disc-row" style="display:none"><span>Item Discounts</span><span class="mono" style="color:var(--accent)" id="cart-disc">-₦0.00</span></div>
+          <div class="total-row" id="order-disc-row" style="display:none"><span>Order Discount</span><span class="mono" style="color:var(--accent)" id="cart-order-disc">-₦0.00</span></div>
           <div class="total-row big"><span>TOTAL</span><span id="cart-total">₦0.00</span></div>
+        </div>
+        <div class="flex items-center gap8 mb8" style="margin-top:4px">
+          <label style="margin:0;font-size:11px;color:var(--muted);white-space:nowrap">Order Disc ₦</label>
+          <input type="number" id="order-discount" placeholder="0" min="0" oninput="updateTotals()" inputmode="numeric" class="no-spin" style="flex:1;padding:5px 8px;font-size:12px;"/>
         </div>
         <label style="margin-bottom:5px">Payment (combine as needed)</label>
         <div class="pay-grid">
-          <div class="pay-box"><label>💵 Cash</label><input type="number" id="pay-cash" placeholder="0" oninput="calcPay()"/></div>
-          <div class="pay-box"><label>📱 Transfer</label><input type="number" id="pay-transfer" placeholder="0" oninput="calcPay()"/></div>
-          <div class="pay-box"><label>💳 POS</label><input type="number" id="pay-pos" placeholder="0" oninput="calcPay()"/></div>
+          <div class="pay-box"><label>💵 Cash</label><input type="number" id="pay-cash" placeholder="0" oninput="calcPay()" inputmode="numeric" class="no-spin"/></div>
+          <div class="pay-box"><label>📱 Transfer</label><input type="number" id="pay-transfer" placeholder="0" oninput="calcPay()" inputmode="numeric" class="no-spin"/></div>
+          <div class="pay-box"><label>💳 POS</label><input type="number" id="pay-pos" placeholder="0" oninput="calcPay()" inputmode="numeric" class="no-spin"/></div>
         </div>
         <div id="pay-status" class="text-sm text-muted mb8"></div>
         <div id="change-box" style="display:none" class="alert alert-success">Change: <strong class="mono" id="change-val">₦0.00</strong></div>
@@ -721,6 +757,11 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--hover-row);}
         <div class="form-row"><label>Phone Number 1</label><input id="set-p1" placeholder="0812..."/></div>
         <div class="form-row"><label>Phone Number 2 (optional)</label><input id="set-p2" placeholder="0812..."/></div>
         <div class="form-row"><label>Phone Number 3 (optional)</label><input id="set-p3" placeholder="0812..."/></div>
+        <div class="form-row"><label>Account Number</label><input id="set-acct" placeholder="0123456789"/></div>
+        <div class="form-row-2">
+          <div><label>Bank Name</label><input id="set-bank" placeholder="First Bank"/></div>
+          <div><label>Account Name</label><input id="set-acctname" placeholder="Account holder name"/></div>
+        </div>
         <div class="flex gap8 mt8">
           <button class="btn btn-gold" onclick="saveSettings()">💾 Save</button>
           <button class="btn btn-ghost" onclick="cancelShopInfoEdit()">Cancel</button>
@@ -864,8 +905,9 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--hover-row);}
       <input type="hidden" id="ei-img"/>
     </div>
     <div class="form-row"><label>Selling Price (₦)</label><input id="ei-price" type="number"/></div>
+    <div id="ei-unit-prices" style="display:none"></div>
     <div class="form-row"><label>Expiry Date</label><input id="ei-expiry" type="date"/></div>
-    <div class="alert alert-info" style="font-size:11px">Only selling price, expiry and photo can be edited here. Price change will sync to all storerooms.</div>
+    <div class="alert alert-info" style="font-size:11px">Selling price(s), expiry and photo can be edited here. Price changes sync to all storerooms.</div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-edit-item')">Cancel</button>
       <button class="btn btn-gold" onclick="saveEditItem()">Save</button>
@@ -1050,6 +1092,19 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--hover-row);}
 <div class="modal-overlay" id="modal-sup-delivery">
   <div class="modal">
     <div class="modal-title">📦 Record New Delivery</div>
+    <!-- Delivery Cart -->
+    <div id="del-cart-section">
+      <div class="flex items-center justify-between mb8">
+        <div style="font-size:12px;font-weight:700;color:var(--text)">Items in this delivery:</div>
+        <button class="btn btn-ghost btn-sm" onclick="addDeliveryCartRow()">+ Add Item</button>
+      </div>
+      <div id="del-cart-rows"></div>
+      <div class="flex justify-between mt8 mb8" style="font-size:13px;font-weight:700">
+        <span>Grand Total:</span><span class="mono" id="del-grand-total" style="color:var(--accent3)">₦0.00</span>
+      </div>
+    </div>
+    <!-- Single item section (legacy, hidden when cart has items) -->
+    <div id="del-single-section" style="display:none">
     <!-- Searchable item -->
     <div class="form-row">
       <label>Item — search or create new</label>
@@ -1077,6 +1132,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--hover-row);}
         <div><label>Total Cost (₦)</label><input type="number" id="del-total-simple" readonly style="color:var(--accent3)"/></div>
       </div>
     </div>
+    </div><!-- end del-single-section -->
     <div class="card-title" style="font-size:12px;margin-top:6px">Distribute to:</div>
     <div id="dist-rows"></div>
     <input type="hidden" id="del-total-pieces" value="0"/>
@@ -1084,7 +1140,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--hover-row);}
     <div id="dist-summary" class="mt8 text-sm text-muted"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-sup-delivery')">Cancel</button>
-      <button class="btn btn-gold" onclick="recordDelivery()">✅ Record Delivery</button>
+      <button class="btn btn-gold" onclick="deliveryCartRows.length?recordDeliveryCart():recordDelivery()">✅ Record Delivery</button>
     </div>
   </div>
 </div>
@@ -1479,17 +1535,24 @@ function restoreSession(){
 let lastAutoBackup=0;
 async function doBackup(){
   try{
-    const data=JSON.stringify(DB,null,2);
-    const blob=new Blob([data],{type:'application/json'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    const prefix=localStorage.getItem('shopdb_device_prefix')||'';
-    a.download='shop_backup'+(prefix?'_'+prefix:'')+'.json';
-    a.click();URL.revokeObjectURL(a.href);
-    DB.lastBackup=new Date().toDateString();
-    save();
+    DB.lastBackup=new Date().toDateString();save();
     const banner=g('backup-banner');if(banner)banner.style.display='none';
-    if(navigator.onLine&&localStorage.getItem('shopdb_gdrive_token')){await uploadAndMerge();}
+    let driveUploaded=false;
+    if(navigator.onLine&&localStorage.getItem('shopdb_gdrive_token')){
+      try{await uploadAndMerge();driveUploaded=true;}catch(e){console.log('Drive upload failed',e);}
+    }
+    const msg=driveUploaded
+      ?'☁️ Data uploaded to Google Drive!\n\nDo you also want to download a local backup file?'
+      :'Download a local backup file?';
+    if(confirm(msg)){
+      const data=JSON.stringify(DB,null,2);
+      const blob=new Blob([data],{type:'application/json'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      const prefix=localStorage.getItem('shopdb_device_prefix')||'';
+      a.download='shop_backup'+(prefix?'_'+prefix:'')+'.json';
+      a.click();URL.revokeObjectURL(a.href);
+    }
   }catch(e){}
 }
 function doAutoBackup(){doBackup();}
@@ -1514,6 +1577,12 @@ function openModal(id){
     g('dist-rows').innerHTML='';distCount=0;
     g('dist-summary').textContent='';
     closeDelItemDrop();
+    // Reset delivery cart
+    deliveryCartRows=[];deliveryCartCount=0;
+    if(g('del-cart-rows'))g('del-cart-rows').innerHTML='';
+    if(g('del-grand-total'))g('del-grand-total').textContent='₦0.00';
+    // Auto-add first cart row
+    if(typeof addDeliveryCartRow==='function')setTimeout(()=>addDeliveryCartRow(),50);
     if(currentSupId){
       const s=DB.suppliers.find(x=>x.id===currentSupId);
       const title=g('modal-sup-delivery')?.querySelector('.modal-title');
@@ -1727,11 +1796,11 @@ function renderNewItemUnitRows(){
       </div>
       <div><label>${isFirst?'—':'Per Parent'}</label>
         ${isFirst?'<input disabled placeholder="—" style="opacity:0.4"/>'
-          :`<input type="number" value="${u.qtyInParent||''}" oninput="newItemUnits[${i}].qtyInParent=parseFloat(this.value)||1;refreshInitQtyInputs()" placeholder="e.g. 8"/>`}
+          :`<input type="number" value="${u.qtyInParent||''}" oninput="newItemUnits[${i}].qtyInParent=parseFloat(this.value)||1;refreshInitQtyInputs();updateInitialStockCost()" placeholder="e.g. 8"/>`}
       </div>
       <div><label>${isFirst?'Cost ₦ (base)':'Cost ₦ (auto)'}</label>
         <input type="number" data-nicost="${i}" value="${u.costPrice||''}"
-          oninput="newItemUnits[${i}].costPrice=parseFloat(this.value)||0;${isFirst?'calcNewItemSubCosts()':''}"
+          oninput="newItemUnits[${i}].costPrice=parseFloat(this.value)||0;${isFirst?'calcNewItemSubCosts()':''};updateInitialStockCost()"
           placeholder="${isFirst?'Enter':'auto'}" ${isFirst?'':'style="opacity:0.7"'} ${isFirst?'':'readonly'}/>
       </div>
       <div><label>Sell Price ₦</label>
@@ -1760,18 +1829,6 @@ function calcNewItemSubCosts(){
   }
 }
 
-function refreshInitQtyInputs(){
-  const sec=g('fi-init-qty-section'),cont=g('fi-init-qty-inputs');
-  if(!sec||!cont)return;
-  const hasNames=newItemUnits.some(u=>u.name);
-  sec.style.display=hasNames?'block':'none';
-  cont.innerHTML=newItemUnits.filter(u=>u.name).map((u,i)=>
-    `<div class="flex items-center gap8 mb8">
-      <label style="width:100px;text-transform:none;font-size:13px;font-weight:600;color:var(--text)">${u.name}</label>
-      <input type="number" id="fi-init-qty-${i}" placeholder="0" min="0" style="width:100px"/>
-    </div>`
-  ).join('');
-}
 
 function selectExistingItem(id){
   const item=DB.items.find(x=>x.id===id);if(!item)return;
@@ -1873,29 +1930,21 @@ function saveAddItem(){
     alert(`✅ "${name}" created!${breakdown.length?' Stock: '+breakdown.join(' + '):''}`);
   }
 }
-function openEditItem(id){
-  const x=DB.items.find(i=>i.id===id);if(!x)return;
-  sv('ei-id',id);sv('ei-price',x.price);sv('ei-expiry',x.expiry||'');sv('ei-img',x.img||'');
-  g('edit-img-preview').innerHTML=x.img?`<img src="${x.img}" style="max-height:100px;border-radius:7px"/>`:
-    '<div style="font-size:30px">📷</div><p>Click to change photo</p>';
-  openModal('modal-edit-item');
-}
-function saveEditItem(){
-  const id=v('ei-id'),x=DB.items.find(i=>i.id===id);if(!x)return;
-  const oldPrice=x.price,newPrice=f('ei-price');
-  if(newPrice&&newPrice!==oldPrice){
-    if(!DB.priceHistory)DB.priceHistory=[];
-    DB.priceHistory.push({itemId:id,itemName:x.name,oldPrice,newPrice,date:new Date().toLocaleString(),by:currentUser.name,reason:'Manual edit'});
-  }
-  x.price=newPrice;x.expiry=v('ei-expiry');
-  const ni=v('ei-img');if(ni)x.img=ni;
-  if(newPrice&&newPrice!==oldPrice){ROOMS.forEach(r=>{const s=DB.storerooms[r]?.find(si=>si.id===id);if(s)s.price=newPrice;});}
-  save();closeModal('modal-edit-item');renderInventory();renderInvStats();renderPosItems();
-}
-function delItem(id){if(!confirm('Delete?'))return;DB.items=DB.items.filter(x=>x.id!==id);save();renderInventory();renderInvStats();renderPosItems();}
-function checkExp(d){const diff=(new Date(d)-new Date())/864e5;return diff<0?'expired':diff<=30?'soon':'ok';}
 
-let invSort={col:'freq',dir:1};
+
+function delItem(id){
+  const item=DB.items.find(x=>x.id===id);if(!item)return;
+  const inRooms=ROOMS.filter(r=>{const s=DB.storerooms[r]?.find(x=>x.id===id);return s&&s.qty>0;});
+  let msg='Delete "'+item.name+'"?';
+  if(inRooms.length>0){const details=inRooms.map(r=>{const s=DB.storerooms[r].find(x=>x.id===id);return r+': '+s.qty;}).join(', ');msg='\u26a0\ufe0f "'+item.name+'" still has stock in:\n'+details+'\n\nThis will remove all records. Continue?';}
+  if(!confirm(msg))return;
+  ROOMS.forEach(r=>{if(DB.storerooms[r])DB.storerooms[r]=DB.storerooms[r].filter(x=>x.id!==id);});
+  DB.items=DB.items.filter(x=>x.id!==id);
+  save();renderInventory();renderInvStats();renderPosItems();
+}
+function checkExp(d){if(!d)return'ok';let dt=new Date(d);if(isNaN(dt)){const m=d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(m)dt=new Date(m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'));}if(isNaN(dt))return'ok';const diff=(dt-new Date())/864e5;return diff<0?'expired':diff<=30?'soon':'ok';}
+
+let invSort={col:'date',dir:-1};
 function sortInv(col){if(invSort.col===col)invSort.dir*=-1;else{invSort.col=col;invSort.dir=1;}renderInventory();}
 function invSortArrow(col){if(invSort.col!==col)return'<span class="sort-arrow">↕</span>';return invSort.dir===1?'<span class="sort-arrow">↑</span>':'<span class="sort-arrow">↓</span>';}
 function invTh(col,label){const active=invSort.col===col?'active':'';return`<th class="sort-th ${active}" onclick="sortInv('${col}')">${label}${invSortArrow(col)}</th>`;}
@@ -1916,9 +1965,8 @@ function renderInventory(){
     else if(col==='stock')v=b.qty-a.qty;
     else if(col==='date'){v=parseDateStr(b.dateAdded)-parseDateStr(a.dateAdded);}
     else if(col==='expiry'){
-      const ea=a.expiry?new Date(a.expiry.split('/').reverse().join('-')):new Date('9999-12-31');
-      const eb=b.expiry?new Date(b.expiry.split('/').reverse().join('-')):new Date('9999-12-31');
-      v=ea-eb;
+      const parseExp=s=>{if(!s)return new Date('9999-12-31');if(/^\d{4}-\d{2}-\d{2}$/.test(s))return new Date(s);const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(m)return new Date(m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'));return new Date(s);};
+      v=parseExp(a.expiry)-parseExp(b.expiry);
     }
     else if(col==='status'){
       const statusVal=x=>{if(x.qty===0)return dir===1?2:0;if(x.qty<=(x.low||5))return 1;return dir===1?0:2;};
@@ -1952,7 +2000,7 @@ function renderInventory(){
   <td class="text-sm" style="color:var(--accent3)">${priceDisplay}</td>
   <td class="mono text-muted">₦${fmt(x.cost||0)}</td>
   <td class="stock-multi">${stockStr}</td>
-  <td class="text-muted text-sm">${x.dateAdded||'—'}</td>
+  <td class="text-muted text-sm">${x.dateAdded?fmtDateTime(x.dateAdded):'—'}</td>
   <td class="text-sm">${x.expiry?`<span class="badge ${es==='expired'?'badge-red':es==='soon'?'badge-yellow':'badge-green'}">${x.expiry}</span>`:'—'}</td>
   <td>${out?'<span class="badge badge-red">Out</span>':low?'<span class="badge badge-yellow">⚠ Low</span>':'<span class="badge badge-green">✓ OK</span>'}</td>
   ${ce?`<td onclick="event.stopPropagation()"><div class="flex gap8 flex-wrap"><button class="btn btn-ghost btn-sm" onclick="openEditItem('${x.id}')">✏️</button><button class="btn btn-blue btn-sm" onclick="openSendTo('${x.id}','shop')">📤</button><button class="btn btn-danger btn-sm" onclick="delItem('${x.id}')">Del</button></div></td>`:''}</tr>`;}).join('')}
@@ -1972,6 +2020,29 @@ function renderExpiryAlerts(){
 }
 
 // =================== ITEM HISTORY ===================
+
+
+function fmtDateTime(dateStr){
+  if(!dateStr)return"—";
+  const d=new Date(dateStr);
+  if(isNaN(d))return dateStr;
+  const dd=String(d.getDate()).padStart(2,"0");
+  const mm=String(d.getMonth()+1).padStart(2,"0");
+  const yyyy=d.getFullYear();
+  let hh=d.getHours();
+  const min=String(d.getMinutes()).padStart(2,"0");
+  const ss=String(d.getSeconds()).padStart(2,"0");
+  const ampm=hh>=12?"PM":"AM";
+  hh=hh%12||12;
+  return dd+"/"+mm+"/"+yyyy+" "+String(hh).padStart(2,"0")+":"+min+":"+ss+" "+ampm;
+}
+function fmtDate(dateStr){
+  if(!dateStr)return"—";
+  const d=new Date(dateStr);
+  if(isNaN(d))return dateStr;
+  return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
+}
+function nowFormatted(){return fmtDateTime(new Date().toISOString());}
 
 function parseDateStr(s){
   if(!s)return 0;
@@ -2025,6 +2096,27 @@ function openItemHistory(itemId,context){
 // item.units = [{id, name, qtyInParent, sellPrice, isBase}]
 // item.qty is always stored in the SMALLEST unit
 // item.cost is for the LARGEST (base) unit
+
+
+function getShopHeader(){
+  const ss=DB.shopSettings||{};
+  const phones=[ss.phone1,ss.phone2,ss.phone3].filter(Boolean).join(' | ');
+  const bankLine=ss.account?'Account: '+ss.account+(ss.bank?' | Bank: '+ss.bank:'')+(ss.accountName?' | '+ss.accountName:''):'';
+  let h='<h2 style="font-size:16px;margin:0 0 4px">'+(ss.name||'Ado Salisu Sarki Mai Charbi')+'</h2>';
+  if(ss.address)h+='<p style="font-size:11px;color:#555;margin:2px 0">'+ss.address+'</p>';
+  if(phones)h+='<p style="font-size:11px;color:#555;margin:2px 0">'+phones+'</p>';
+  if(bankLine)h+='<p style="font-size:11px;color:#555;margin:2px 0">'+bankLine+'</p>';
+  return h;
+}
+function printHeaderHtml(leftContent,title){
+  return '<div style="font-family:Arial,sans-serif;padding:24px;color:#000">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">'
+    +'<div>'+getShopHeader()+'</div>'
+    +'<div style="text-align:right;font-size:11px;color:#555"><div style="font-size:13px;font-weight:700;color:#000">'+title+'</div><div>Printed: '+nowFormatted()+'</div></div>'
+    +'</div>'
+    +'<hr style="margin:8px 0"/>'
+    +'<div style="font-size:12px;color:#333;margin-bottom:10px">'+leftContent+'</div>';
+}
 
 function getUnits(item){return item.units&&item.units.length?item.units:[{id:'base',name:item.unit||'piece',qtyInParent:1,sellPrice:item.price,isBase:true}];}
 
@@ -2288,21 +2380,24 @@ function renderCart(){
   updateTotals();
 }
 function updateTotals(){
-  const sub=cart.reduce((s,c)=>s+c.price*c.qty,0),discs=cart.reduce((s,c)=>s+c.disc*c.qty,0),total=Math.max(0,sub-discs);
+  const sub=cart.reduce((s,c)=>s+c.price*c.qty,0),discs=cart.reduce((s,c)=>s+c.disc*c.qty,0);
+  const orderDisc=parseFloat(g('order-discount')?.value)||0;
+  const total=Math.max(0,sub-discs-orderDisc);
   g('cart-sub').textContent='₦'+fmt(sub);g('cart-total').textContent='₦'+fmt(total);
   const dr=g('disc-row');
   if(discs>0){dr.style.display='flex';g('cart-disc').textContent='-₦'+fmt(discs);}else dr.style.display='none';
+  const odr=g('order-disc-row');if(odr){if(orderDisc>0){odr.style.display='flex';g('cart-order-disc').textContent='-₦'+fmt(orderDisc);}else odr.style.display='none';}
   calcPay();
 }
 function calcPay(){
   const cash=f('pay-cash'),xfer=f('pay-transfer'),pos=f('pay-pos'),paid=cash+xfer+pos;
-  const sub=cart.reduce((s,c)=>s+c.price*c.qty,0),discs=cart.reduce((s,c)=>s+c.disc*c.qty,0),total=Math.max(0,sub-discs);
+  const sub=cart.reduce((s,c)=>s+c.price*c.qty,0),discs=cart.reduce((s,c)=>s+c.disc*c.qty,0),orderDisc2=parseFloat(g('order-discount')?.value)||0,total=Math.max(0,sub-discs-orderDisc2);
   g('pay-status').textContent=paid>0?`Paid: ₦${fmt(paid)} of ₦${fmt(total)}`:'';
   if(paid>=total&&paid>0){g('change-box').style.display='block';g('change-val').textContent='₦'+fmt(paid-total);g('short-box').style.display='none';}
   else if(paid>0&&paid<total){g('short-box').style.display='block';g('short-val').textContent='₦'+fmt(total-paid);g('change-box').style.display='none';}
   else{g('change-box').style.display='none';g('short-box').style.display='none';}
 }
-function clearCart(){cart=[];['pay-cash','pay-transfer','pay-pos','checkout-cname'].forEach(id=>sv(id,''));sv('checkout-ctype','walk-in');renderCart();}
+function clearCart(){cart=[];['pay-cash','pay-transfer','pay-pos','checkout-cname','order-discount'].forEach(id=>sv(id,''));sv('checkout-ctype','walk-in');renderCart();}
 function suggestCustomer(){
   const val=g('checkout-cname').value.trim().toLowerCase(),box=g('cust-sugg-box');
   if(!val||val.length<2){box.innerHTML='';return;}
@@ -2313,7 +2408,7 @@ function suggestCustomer(){
 function completeSale(){
   if(!cart.length){alert('Cart is empty!');return;}
   const cash=f('pay-cash'),xfer=f('pay-transfer'),pos=f('pay-pos'),paid=cash+xfer+pos;
-  const sub=cart.reduce((s,c)=>s+c.price*c.qty,0),discs=cart.reduce((s,c)=>s+c.disc*c.qty,0),total=Math.max(0,sub-discs);
+  const sub=cart.reduce((s,c)=>s+c.price*c.qty,0),discs=cart.reduce((s,c)=>s+c.disc*c.qty,0);const orderDiscAmt=parseFloat(g('order-discount')?.value)||0;const total=Math.max(0,sub-discs-orderDiscAmt);
   const cname=g('checkout-cname').value.trim(),ctype=g('checkout-ctype').value;
   const existingCust=cname?DB.customers.find(c=>c.name.toLowerCase()===cname.toLowerCase()):null;
   if(paid<total){
@@ -2322,7 +2417,7 @@ function completeSale(){
   }
   const receipt={id:'RCP-'+(localStorage.getItem('shopdb_device_prefix')||'')+String(DB.receiptCounter).padStart(4,'0'),date:new Date().toLocaleString(),
     customer:cname||'Anonymous',orderType:ctype,cashier:currentUser.name,
-    items:JSON.parse(JSON.stringify(cart)),subtotal:sub,totalDiscount:discs,total,
+    items:JSON.parse(JSON.stringify(cart)),subtotal:sub,totalDiscount:discs,orderDiscount:orderDiscAmt,total,
     payments:{cash,transfer:xfer,pos},totalPaid:paid,change:Math.max(0,paid-total),debt:paid<total?total-paid:0};
   DB.receiptCounter++;DB.receipts.push(receipt);
   cart.forEach(c=>{
@@ -2331,7 +2426,7 @@ function completeSale(){
       const piecesDeducted=(c.piecesEach||1)*c.qty;
       item.qty=Math.max(0,item.qty-piecesDeducted);
       if(!DB.itemHistory)DB.itemHistory=[];
-      DB.itemHistory.push({type:'sale',itemId:c.id,itemName:c.name,unitName:c.unitName,date:receipt.date,qty:c.qty,piecesEach:c.piecesEach||1,totalPieces:piecesDeducted,price:c.price,disc:c.disc,receiptId:receipt.id,customer:receipt.customer,cashier:receipt.cashier});}
+      const units=getUnits(item);const ppu=[];ppu[units.length-1]=1;for(let ii=units.length-2;ii>=0;ii--)ppu[ii]=ppu[ii+1]*units[ii+1].qtyInParent;const costAtSale=(item.cost||0)/(ppu[0]||1)*piecesDeducted;DB.itemHistory.push({type:'sale',itemId:c.id,itemName:c.name,unitName:c.unitName,date:receipt.date,qty:c.qty,piecesEach:c.piecesEach||1,totalPieces:piecesDeducted,price:c.price,disc:c.disc,costAtSale,receiptId:receipt.id,customer:receipt.customer,cashier:receipt.cashier});}
   });
   if(cname){
     let cust=existingCust;
@@ -2340,7 +2435,7 @@ function completeSale(){
     if(receipt.debt>0){if(!cust.debt)cust.debt=0;cust.debt+=receipt.debt;if(!cust.debtHistory)cust.debtHistory=[];cust.debtHistory.push({type:'debt',date:receipt.date,amount:receipt.debt,receiptId:receipt.id,note:'Unpaid balance from sale'});}
   }
   save();currentReceiptData=receipt;showReceiptModal(receipt);
-  cart=[];['pay-cash','pay-transfer','pay-pos','checkout-cname'].forEach(id=>sv(id,''));sv('checkout-ctype','walk-in');
+  cart=[];['pay-cash','pay-transfer','pay-pos','checkout-cname','order-discount'].forEach(id=>sv(id,''));sv('checkout-ctype','walk-in');
   renderCart();renderPosItems();
 }
 
@@ -2350,12 +2445,13 @@ function showReceiptModal(r){
   const ss=DB.shopSettings||{};const phones=[ss.phone1,ss.phone2,ss.phone3].filter(Boolean).join(' · ');
   g('rec-preview').innerHTML=`<div class="receipt-paper" id="rpt">
   <h2>${ss.name||'Ado Salisu Sarki Mai Charbi'}</h2>
-  <div class="rp-sub">${ss.address||''}${ss.address?'<br/>':''}${phones?phones+'<br/>':''}${r.id} · ${r.date}<br/>Customer: ${r.customer} (${r.orderType||'walk-in'})<br/>Cashier: ${r.cashier}</div>
+  <div class="rp-sub">${ss.address||''}${ss.address?'<br/>':''}${phones?phones+'<br/>':''}${r.id} · ${fmtDateTime(r.date)}<br/>Customer: ${r.customer} (${r.orderType||'walk-in'})<br/>Cashier: ${r.cashier}</div>
   <div class="rp-div"></div>
   <div style="display:grid;grid-template-columns:1fr auto auto;gap:4px;font-size:9px;color:#777;margin-bottom:3px;font-weight:bold"><span>ITEM</span><span style="text-align:right">UNIT</span><span style="text-align:right">TOTAL</span></div>
   ${r.items.map(x=>`<div style="display:grid;grid-template-columns:1fr auto auto;gap:4px;margin-bottom:2px;font-size:10px"><span>${x.name}${x.unitName&&x.unitName!==x.name?' ('+x.unitName+')':''} ×${x.qty}</span><span style="text-align:right">₦${fmt(x.price)}</span><span style="text-align:right">₦${fmt(x.price*x.qty)}</span></div>${x.disc>0?`<div style="display:grid;grid-template-columns:1fr auto;gap:4px;font-size:9px;color:#888"><span>  Discount</span><span style="text-align:right">-₦${fmt(x.disc*x.qty)}</span></div>`:''}`).join('')}
   <div class="rp-div"></div>
-  ${r.totalDiscount>0?`<div class="rp-line"><span>Total Discount</span><span>-₦${fmt(r.totalDiscount)}</span></div>`:''}
+  ${r.totalDiscount>0?`<div class="rp-line"><span>Item Discounts</span><span>-₦${fmt(r.totalDiscount)}</span></div>`:''}
+  ${(r.orderDiscount||0)>0?`<div class="rp-line"><span>Order Discount</span><span>-₦${fmt(r.orderDiscount)}</span></div>`:''}
   <div class="rp-line rp-total"><span>TOTAL</span><span>₦${fmt(r.total)}</span></div>
   <div class="rp-div"></div>
   ${pp.map(p=>`<div class="rp-line" style="font-size:10px"><span>${p}</span></div>`).join('')}
@@ -2414,7 +2510,7 @@ function renderRoomStats(){
   <div class="stat-card s-green"><div class="stat-label">Total Units</div><div class="stat-val">${total}</div></div>
   <div class="stat-card s-gold"><div class="stat-label">Stock Value</div><div class="stat-val" style="color:var(--accent3)">₦${fmt(val)}</div></div>`;
 }
-let roomSort={col:'name',dir:1};
+let roomSort={col:'date',dir:-1};
 function sortRoom(col){if(roomSort.col===col)roomSort.dir*=-1;else{roomSort.col=col;roomSort.dir=1;}renderRoomItems();}
 function roomTh(col,label){const active=roomSort.col===col?'active':'';const arrow=roomSort.col===col?(roomSort.dir===1?'↑':'↓'):'↕';return`<th class="sort-th ${active}" onclick="sortRoom('${col}')">${label} <span class="sort-arrow">${arrow}</span></th>`;}
 
@@ -2688,6 +2784,7 @@ function recordDelivery(){
   g('del-unit-qty-section').style.display='none';
   g('del-simple-qty-section').style.display='none';
   openSupDetail(currentSupId);
+  if(currentRoom){renderRoomStats();renderRoomItems();renderRoomLog();}
   alert(`✅ Delivery recorded!\n${breakdown.join(' + ')} of ${item.name}\nTotal: ₦${fmt(totalCost)}`);
 }
 
@@ -2981,7 +3078,7 @@ function addSupplier(){
   save();closeModal('modal-add-supplier');renderSuppliers();fillSupSelects();
   ['fs-name','fs-phone','fs-account','fs-accname','fs-bank','fs-addr','fs-notes'].forEach(id=>sv(id,''));
 }
-let supSort={col:'name',dir:1};
+let supSort={col:'deliveries',dir:-1};
 function sortSup(col){if(supSort.col===col)supSort.dir*=-1;else{supSort.col=col;supSort.dir=1;}renderSuppliers();}
 function supTh(col,label){const active=supSort.col===col?'active':'';const arrow=supSort.col===col?(supSort.dir===1?'↑':'↓'):'↕';return`<th class="sort-th ${active}" onclick="sortSup('${col}')">${label} <span class="sort-arrow">${arrow}</span></th>`;}
 
@@ -3051,7 +3148,7 @@ function openSupDetail(id){
   :'<div class="text-muted text-sm">No payments yet.</div>';
   const dels=s.deliveries||[];
   g('sup-del-hist').innerHTML=dels.length?`<table><thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Cost/Unit</th><th>Total</th><th>Distributed To</th></tr></thead><tbody>
-  ${dels.map(d=>`<tr><td class="text-muted text-sm">${d.date}</td><td>${d.item}</td>
+  ${dels.map(d=>`<tr><td class="text-muted text-sm">${fmtDateTime(d.date)}</td><td>${d.item}</td>
   <td class="mono">${d.breakdown||((d.units||'?')+' '+(d.largestUnit||d.unit||'unit'))}</td>
   <td class="mono">₦${fmt(d.costPerLargest||d.buyPrice||0)} /${d.largestUnit||d.unit||'unit'}</td>
   <td class="mono" style="color:var(--accent3)">₦${fmt(d.totalCost)}</td>
@@ -3077,25 +3174,23 @@ function closeSupDetail(){currentSupId=null;g('sup-list-view').style.display='bl
 
 function printSupStatement(){
   if(!currentSupId)return;const s=DB.suppliers.find(x=>x.id===currentSupId);if(!s)return;
-  const from=v('sup-stmt-from'),to=v('sup-stmt-to'),ss=DB.shopSettings||{};
-  const phones=[ss.phone1,ss.phone2,ss.phone3].filter(Boolean).join(' | ');
+  const from=v('sup-stmt-from'),to=v('sup-stmt-to');
   const events=[];
-  (s.deliveries||[]).forEach(d=>{const dd=new Date(d.date);if(from&&dd<new Date(from+' 00:00:00'))return;if(to&&dd>new Date(to+' 23:59:59'))return;events.push({date:dd,dateStr:d.date,type:'delivery',item:d.item,units:d.units,buyPrice:d.buyPrice,amount:d.totalCost,distributions:d.distributions||[]});});
-  (s.payments||[]).forEach(p=>{const pd=new Date(p.date);if(from&&pd<new Date(from+' 00:00:00'))return;if(to&&pd>new Date(to+' 23:59:59'))return;events.push({date:pd,dateStr:p.date,type:'payment',method:p.method,amount:p.amount,note:p.note||''});});
+  (s.deliveries||[]).forEach(d=>{const dd=new Date(d.date);if(from&&dd<new Date(from+' 00:00:00'))return;if(to&&dd>new Date(to+' 23:59:59'))return;events.push({date:dd,dateStr:fmtDateTime(d.date),type:'delivery',item:d.item,units:d.units,buyPrice:d.buyPrice||d.costPerLargest,amount:d.totalCost,distributions:d.distributions||[]});});
+  (s.payments||[]).forEach(p=>{const pd=new Date(p.date);if(from&&pd<new Date(from+' 00:00:00'))return;if(to&&pd>new Date(to+' 23:59:59'))return;events.push({date:pd,dateStr:fmtDateTime(p.date),type:'payment',method:p.method,amount:p.amount,note:p.note||''});});
   events.sort((a,b)=>a.date-b.date);
   let balance=0;
   const rows=events.map(e=>{
-    if(e.type==='delivery'){balance+=e.amount;
-      return`<tr><td>${e.dateStr}</td><td>📦 ${e.item} ×${e.units} @ ₦${fmt(e.buyPrice)}/unit</td><td style="color:#c0392b">+₦${fmt(e.amount)}</td><td>—</td><td style="color:${balance>0?'#c0392b':'#27ae60'}">${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
+    if(e.type==='delivery'){balance+=e.amount||0;return`<tr><td>${e.dateStr}</td><td>📦 ${e.item} ×${e.units||'?'} @ ₦${fmt(e.buyPrice||0)}/unit</td><td style="color:#c0392b">+₦${fmt(e.amount||0)}</td><td>—</td><td style="color:${balance>0?'#c0392b':'#27ae60'}">${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
     else{balance-=e.amount;return`<tr><td>${e.dateStr}</td><td>💳 Payment (${e.method})${e.note?' — '+e.note:''}</td><td>—</td><td style="color:#27ae60">-₦${fmt(e.amount)}</td><td style="color:${balance>0?'#c0392b':'#27ae60'}">${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
   }).join('');
   const owed=s.totalOwed||0;
-  g('print-area').innerHTML=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000"><h2>${ss.name||'Ado Salisu Sarki Mai Charbi'}</h2>${ss.address?`<p style="font-size:12px;color:#555">${ss.address}</p>`:''}${phones?`<p style="font-size:12px;color:#555">${phones}</p>`:''}<hr style="margin:10px 0"/><h3>Supplier Statement — ${s.name}</h3><p style="font-size:12px;color:#555">Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'} · Account Name: ${s.accname||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''} · Printed: ${new Date().toLocaleString()}</p>
-  <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:14px"><thead><tr style="background:#f0f0f0"><th style="padding:8px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:8px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:8px;border:1px solid #ccc;text-align:right">Debt (+)</th><th style="padding:8px;border:1px solid #ccc;text-align:right">Payment (-)</th><th style="padding:8px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>'}</tbody></table>
-  <div style="margin-top:16px;padding:12px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;font-weight:bold">Final Balance: ${owed>0?'₦'+fmt(owed):owed===0?'₦0.00':'-₦'+fmt(Math.abs(owed))}</div></div>`;
+  const leftInfo=`<strong>${s.name}</strong><br/>Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'} · Acct Name: ${s.accname||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''}`;
+  g('print-area').innerHTML=printHeaderHtml(leftInfo,'Supplier Statement')
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:7px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:7px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Debt (+)</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Payment (-)</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>')+'</tbody></table>'
+    +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold">Final Balance: ${owed>0?'₦'+fmt(owed):owed===0?'₦0.00':'-₦'+fmt(Math.abs(owed))}</div></div>`;
   closeModal('modal-sup-statement');window.print();
 }
-
 // =================== CUSTOMER DEBT ===================
 function openDebtPayment(custId){
   const id=custId||currentCustId;
@@ -3112,29 +3207,28 @@ function recordDebtPayment(){
   c.debtHistory.push({type:'payment',date,amount:amt,method,note,recordedAt:new Date().toLocaleString()});
   c.debt=Math.max(0,(c.debt||0)-amt);
   save();closeModal('modal-cust-debt');
-  if(currentCustId===id)openCustDetail(id);
+  if(currentCustId===id){openCustDetail(id);}renderCustomers();
 }
 
 // =================== CUSTOMER STATEMENT ===================
 function printCustStatement(){
   const custId=v('cust-stmt-id');const c=DB.customers.find(x=>x.id===custId);if(!c)return;
-  const from=v('cust-stmt-from'),to=v('cust-stmt-to'),ss=DB.shopSettings||{};
-  const phones=[ss.phone1,ss.phone2,ss.phone3].filter(Boolean).join(' | ');
+  const from=v('cust-stmt-from'),to=v('cust-stmt-to');
   const events=[];
-  (c.purchases||[]).forEach(p=>{const d=new Date(p.date);if(from&&d<new Date(from+' 00:00:00'))return;if(to&&d>new Date(to+' 23:59:59'))return;events.push({date:d,dateStr:p.date,type:'purchase',items:p.items||[],total:p.total,orderType:p.orderType||'walk-in',debt:p.debt||0,payments:p.payments,receiptId:p.receiptId});});
-  (c.debtHistory||[]).filter(d=>d.type==='payment').forEach(p=>{const d=new Date(p.date);if(from&&d<new Date(from+' 00:00:00'))return;if(to&&d>new Date(to+' 23:59:59'))return;events.push({date:d,dateStr:p.date,type:'debtpay',desc:`Debt payment (${p.method||'Cash'})${p.note?' — '+p.note:''}`,amount:p.amount});});
+  (c.purchases||[]).forEach(p=>{const d=new Date(p.date);if(from&&d<new Date(from+' 00:00:00'))return;if(to&&d>new Date(to+' 23:59:59'))return;events.push({date:d,dateStr:fmtDateTime(p.date),type:'purchase',items:p.items||[],total:p.total,orderType:p.orderType||'walk-in',debt:p.debt||0,payments:p.payments,receiptId:p.receiptId});});
+  (c.debtHistory||[]).filter(d=>d.type==='payment').forEach(p=>{const d=new Date(p.date);if(from&&d<new Date(from+' 00:00:00'))return;if(to&&d>new Date(to+' 23:59:59'))return;events.push({date:d,dateStr:fmtDateTime(p.date),type:'debtpay',desc:`Debt payment (${p.method||'Cash'})${p.note?' — '+p.note:''}`,amount:p.amount});});
   events.sort((a,b)=>a.date-b.date);
   let balance=0;
   const rows=events.map(e=>{
     if(e.type==='purchase'){balance+=e.debt||0;const il=e.items.map(x=>`<div style="padding-left:12px;font-size:11px;color:#555">${x.name} ×${x.qty} · ₦${fmt(x.price)} = ₦${fmt(x.price*x.qty)}</div>`).join('');return`<tr><td>${e.dateStr}</td><td>🛒 Purchase (${e.orderType})<br/>${il}</td><td>₦${fmt(e.total)}</td><td>${e.debt>0?`+₦${fmt(e.debt)}`:'—'}</td><td style="color:${balance>0?'#c0392b':'#27ae60'}">${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
     else{balance-=e.amount;return`<tr><td>${e.dateStr}</td><td>💳 ${e.desc}</td><td>—</td><td style="color:#27ae60">-₦${fmt(e.amount)}</td><td style="color:${balance>0?'#c0392b':'#27ae60'}">${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
   }).join('');
-  g('print-area').innerHTML=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000"><h2>${ss.name||'Ado Salisu Sarki Mai Charbi'}</h2>${ss.address?`<p style="font-size:12px;color:#555">${ss.address}</p>`:''}${phones?`<p style="font-size:12px;color:#555">${phones}</p>`:''}<hr style="margin:10px 0"/><h3>Customer Statement — ${c.name}</h3><p style="font-size:12px;color:#555">Phone: ${c.phone||'—'} · Address: ${c.address||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''} · Printed: ${new Date().toLocaleString()}</p>
-  <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:14px"><thead><tr style="background:#f0f0f0"><th style="padding:8px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:8px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:8px;border:1px solid #ccc;text-align:right">Amount</th><th style="padding:8px;border:1px solid #ccc;text-align:right">Debt</th><th style="padding:8px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>'}</tbody></table>
-  <div style="margin-top:16px;padding:12px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;font-weight:bold">Final Balance: ${balance>0?'₦'+fmt(balance):balance===0?'₦0.00':'-₦'+fmt(Math.abs(balance))}</div></div>`;
+  const leftInfo=`<strong>${c.name}</strong><br/>Phone: ${c.phone||'—'} · Address: ${c.address||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''}`;
+  g('print-area').innerHTML=printHeaderHtml(leftInfo,'Customer Statement')
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:7px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:7px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Amount</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Debt</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>')+'</tbody></table>'
+    +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold">Final Balance: ${balance>0?'₦'+fmt(balance):balance===0?'₦0.00':'-₦'+fmt(Math.abs(balance))}</div></div>`;
   closeModal('modal-cust-statement');window.print();
 }
-
 // =================== THEME ===================
 function toggleTheme(){
   const isLight=document.body.classList.toggle('light-mode');
@@ -3201,6 +3295,7 @@ function toggleShopInfoEdit(){
   g('shop-info-form').style.display='block';
   const ss=DB.shopSettings||{};
   sv('set-name',ss.name||'');sv('set-addr',ss.address||'');sv('set-p1',ss.phone1||'');sv('set-p2',ss.phone2||'');sv('set-p3',ss.phone3||'');
+  sv('set-acct',ss.account||'');sv('set-bank',ss.bank||'');sv('set-acctname',ss.accountName||'');
 }
 function cancelShopInfoEdit(){
   g('shop-info-view').style.display='block';
@@ -3209,7 +3304,7 @@ function cancelShopInfoEdit(){
 function loadSettings(){
   const ss=DB.shopSettings||{};
   g('shop-info-view').style.display='block';g('shop-info-form').style.display='none';
-  const fields=[{label:'Shop Name',val:ss.name||'—'},{label:'Address',val:ss.address||'—'},{label:'Phone 1',val:ss.phone1||'—'},{label:'Phone 2',val:ss.phone2||'—'},{label:'Phone 3',val:ss.phone3||'—'}];
+  const fields=[{label:'Shop Name',val:ss.name||'—'},{label:'Address',val:ss.address||'—'},{label:'Phone 1',val:ss.phone1||'—'},{label:'Phone 2',val:ss.phone2||'—'},{label:'Phone 3',val:ss.phone3||'—'},{label:'Account Number',val:ss.account||'—'},{label:'Bank',val:ss.bank||'—'},{label:'Account Name',val:ss.accountName||'—'}];
   g('shop-info-display').innerHTML=fields.map(f=>`<div><div class="stat-label">${f.label}</div><div style="font-size:13px">${f.val}</div></div>`).join('');
   renderStaff();renderRoomsSettings();
   const dpEl=g('set-device-prefix');if(dpEl)dpEl.value=localStorage.getItem('shopdb_device_prefix')||'';
@@ -3219,6 +3314,7 @@ function loadSettings(){
 function saveSettings(){
   if(!DB.shopSettings)DB.shopSettings={};
   DB.shopSettings.name=v('set-name')||'Ado Salisu Sarki Mai Charbi';DB.shopSettings.address=v('set-addr');DB.shopSettings.phone1=v('set-p1');DB.shopSettings.phone2=v('set-p2');DB.shopSettings.phone3=v('set-p3');
+  DB.shopSettings.account=v('set-acct');DB.shopSettings.bank=v('set-bank');DB.shopSettings.accountName=v('set-acctname');
   save();cancelShopInfoEdit();loadSettings();alert('✅ Settings saved!');
 }
 
@@ -3372,22 +3468,21 @@ function saveExpSupPayment(){
 }
 function printExpSupStatement(){
   const s=(DB.expSuppliers||[]).find(x=>x.id===currentExpSupId);if(!s)return;
-  const ss=DB.shopSettings||{};
   const events=[];
-  (s.purchases||[]).forEach(p=>events.push({date:new Date(p.date),dateStr:p.date,type:'purchase',items:p.items,total:p.total}));
-  (s.payments||[]).forEach(p=>events.push({date:new Date(p.date),dateStr:p.date,type:'payment',amount:p.amount,method:p.method}));
+  (s.purchases||[]).forEach(p=>events.push({date:new Date(p.date),dateStr:fmtDateTime(p.date),type:'purchase',items:p.items,total:p.total}));
+  (s.payments||[]).forEach(p=>events.push({date:new Date(p.date),dateStr:fmtDateTime(p.date),type:'payment',amount:p.amount,method:p.method}));
   events.sort((a,b)=>a.date-b.date);let balance=0;
   const rows=events.map(e=>{
     if(e.type==='purchase'){balance+=e.total;return`<tr><td>${e.dateStr}</td><td>🛍️ ${(e.items||[]).map(i=>i.name).join(', ')}</td><td style="color:#c0392b">+₦${fmt(e.total)}</td><td>—</td><td>${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
     else{balance-=e.amount;return`<tr><td>${e.dateStr}</td><td>💳 Payment (${e.method})</td><td>—</td><td style="color:#27ae60">-₦${fmt(e.amount)}</td><td>${balance>0?'₦'+fmt(balance):'-₦'+fmt(Math.abs(balance))}</td></tr>`;}
   }).join('');
-  g('print-area').innerHTML=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000"><h2>${ss.name||'Ado Salisu Sarki Mai Charbi'}</h2><hr style="margin:8px 0"/><h3>Expense Supplier Statement — ${s.name}</h3><p style="font-size:12px;color:#555">Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'} · Printed: ${new Date().toLocaleString()}</p>
-  <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:12px"><thead><tr style="background:#f0f0f0"><th style="padding:6px;border:1px solid #ccc">Date</th><th style="padding:6px;border:1px solid #ccc">Description</th><th style="padding:6px;border:1px solid #ccc">Debit</th><th style="padding:6px;border:1px solid #ccc">Credit</th><th style="padding:6px;border:1px solid #ccc">Balance</th></tr></thead>
-  <tbody>${rows||'<tr><td colspan="5" style="text-align:center;padding:12px">No transactions</td></tr>'}</tbody></table>
-  <div style="margin-top:12px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold">Final Balance: ${(s.totalOwed||0)>=0?'₦'+fmt(s.totalOwed||0):'-₦'+fmt(Math.abs(s.totalOwed||0))}</div></div>`;
+  const leftInfo=`<strong>${s.name}</strong><br/>Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'}`;
+  g('print-area').innerHTML=printHeaderHtml(leftInfo,'Expense Supplier Statement')
+    +'<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:6px;border:1px solid #ccc">Date</th><th style="padding:6px;border:1px solid #ccc">Description</th><th style="padding:6px;border:1px solid #ccc">Debit</th><th style="padding:6px;border:1px solid #ccc">Credit</th><th style="padding:6px;border:1px solid #ccc">Balance</th></tr></thead>'
+    +'<tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:12px">No transactions</td></tr>')+'</tbody></table>'
+    +`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold">Final Balance: ${(s.totalOwed||0)>=0?'₦'+fmt(s.totalOwed||0):'-₦'+fmt(Math.abs(s.totalOwed||0))}</div></div>`;
   window.print();
 }
-
 // =================== GENERAL EXPENSES ===================
 const EXP_CATS={shop_supplies:'🛍️ Shop Supplies',capital:'🪑 Capital Expense',wages:'👤 Staff Wages',adashi:'💰 Adashi',other:'📌 Other'};
 let expSupplyCount=0,expCapCount=0,expWageCount=0;
@@ -3596,24 +3691,20 @@ function processUnitSetupRows(rows){
 // =================== EXCEL DATE CONVERTER ===================
 function excelDateToStr(val){
   if(!val&&val!==0)return'';
-  // JS Date object (XLSX sometimes returns these)
-  if(val instanceof Date){
-    if(isNaN(val))return'';
-    return`${String(val.getDate()).padStart(2,'0')}/${String(val.getMonth()+1).padStart(2,'0')}/${val.getFullYear()}`;
-  }
-  // Already a string
+  if(val instanceof Date){if(isNaN(val))return'';return val.toISOString().split('T')[0];}
   if(typeof val==='string'){
     const s=val.trim();if(!s)return'';
-    if(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(s))return s;
-    const d=new Date(s);if(!isNaN(d))return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+    const m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+    if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+    const d=new Date(s);if(!isNaN(d))return d.toISOString().split('T')[0];
     return s;
   }
-  // Numeric Excel serial (e.g. 46724)
   if(typeof val==='number'){
     if(val<1)return'';
     const d=new Date(Math.round((val-25569)*86400*1000));
     if(isNaN(d))return'';
-    return`${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+    return d.toISOString().split('T')[0];
   }
   return'';
 }
@@ -3720,7 +3811,7 @@ function processBulkData(rows,destination,supplierId){
 }
 
 // =================== CUSTOMERS ===================
-let custSort={col:'name',dir:1};
+let custSort={col:'purchases',dir:-1};
 function sortCust(col){if(custSort.col===col)custSort.dir*=-1;else{custSort.col=col;custSort.dir=1;}renderCustomers();}
 function custTh(col,label){const active=custSort.col===col?'active':'';const arrow=custSort.col===col?(custSort.dir===1?'↑':'↓'):'↕';return`<th class="sort-th ${active}" onclick="sortCust('${col}')">${label} <span class="sort-arrow">${arrow}</span></th>`;}
 
@@ -3789,7 +3880,7 @@ function openCustDetail(id){
   const purch=c.purchases||[];
   g('cust-hist').innerHTML=purch.length?`<table><thead><tr><th>Date</th><th>Receipt</th><th>Order Type</th><th>Items</th><th>Total</th><th>Debt</th><th>Payment</th></tr></thead><tbody>
   ${purch.map(p=>`<tr class="sup-row" onclick="viewRecById('${p.receiptId}')">
-  <td class="text-muted text-sm">${p.date}</td><td class="mono" style="color:var(--accent3)">${p.receiptId}</td>
+  <td class="text-muted text-sm">${fmtDateTime(p.date)}</td><td class="mono" style="color:var(--accent3)">${p.receiptId}</td>
   <td><span class="badge ${(p.orderType||'walk-in')==='online'?'badge-blue':'badge-green'}">${p.orderType||'walk-in'}</span></td>
   <td class="text-sm">${(p.items||[]).map(x=>x.name+'×'+x.qty).join(', ')}</td>
   <td class="mono">₦${fmt(p.total)}</td>
@@ -3857,7 +3948,7 @@ function renderRec(){
       <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();viewSupPayReceipt('${r.supplierId}','${r.id}')">🧾 View</button></td></tr>`;
     }
     return`<tr class="sup-row" onclick="viewRec('${r.id}')">
-    <td class="mono" style="color:var(--accent3)">${r.id}</td><td class="text-muted text-sm">${r.date}</td>
+    <td class="mono" style="color:var(--accent3)">${r.id}</td><td class="text-muted text-sm">${fmtDateTime(r.date)}</td>
     <td><strong>${r.customer}</strong></td><td><span class="badge ${(r.orderType||'walk-in')==='online'?'badge-blue':'badge-green'}">${r.orderType||'walk-in'}</span></td>
     <td class="text-sm">${r.cashier||'—'}</td><td class="text-sm">${r.items?.length||0} items</td>
     <td class="mono"><strong>₦${fmt(r.total)}</strong></td>
@@ -3930,7 +4021,7 @@ function genReports(){
   const from=v('rep-from'),to=v('rep-to');
   let recs=DB.receipts.filter(r=>{const d=new Date(r.date);if(isNaN(d))return true;if(from&&d<new Date(from+' 00:00:00'))return false;if(to&&d>new Date(to+' 23:59:59'))return false;return true;});
   const tSales=recs.reduce((s,r)=>s+r.total,0),tDisc=recs.reduce((s,r)=>s+(r.totalDiscount||0),0);
-  let tCost=0,tProfit=0;recs.forEach(r=>r.items.forEach(x=>{const item=DB.items.find(i=>i.id===x.id);const cost=(item?.cost||0)*x.qty;const rev=((x.price||0)-(x.disc||0))*x.qty;tCost+=cost;tProfit+=rev-cost;}));
+  let tCost=0,tProfit=0;recs.forEach(r=>r.items.forEach(x=>{const hist=(DB.itemHistory||[]).find(h=>h.type==='sale'&&h.receiptId===r.id&&h.itemId===x.id);const cost=hist&&hist.costAtSale!==undefined?hist.costAtSale:(()=>{const item=DB.items.find(i=>i.id===x.id);if(!item)return 0;const uu=getUnits(item);const pp=[];pp[uu.length-1]=1;for(let ii=uu.length-2;ii>=0;ii--)pp[ii]=pp[ii+1]*uu[ii+1].qtyInParent;return(item.cost||0)/(pp[0]||1)*(x.piecesEach||1)*x.qty;})();const rev=((x.price||0)-(x.disc||0))*x.qty;tCost+=cost;tProfit+=rev-cost;}));
   g('rep-stats').innerHTML=`<div class="stat-card s-blue"><div class="stat-label">Total Sales</div><div class="stat-val mono">₦${fmt(tSales)}</div><div class="stat-sub">${recs.length} transactions</div></div>
   <div class="stat-card s-red"><div class="stat-label">Discounts</div><div class="stat-val mono" style="color:var(--accent)">₦${fmt(tDisc)}</div></div>
   <div class="stat-card s-gold"><div class="stat-label">Cost of Goods</div><div class="stat-val mono" style="color:var(--accent3)">₦${fmt(tCost)}</div></div>
@@ -4461,6 +4552,662 @@ window.addEventListener('online', async function(){
 
 console.log('\u2705 IndexedDB engine loaded - no storage limits!');
 
+
+// ── ITEM 7: Edit item with unit hierarchy ──────────────────────
+
+function onEiUnitPriceChange(idx){
+  // When user changes a unit price, don't auto-propagate — let them override
+}
+
+
+
+function updateInitialStockCost(){
+  const sec=g('fi-init-qty-section');if(!sec)return;
+  const filteredUnits=newItemUnits.filter(u=>u.name);
+  if(!filteredUnits.length)return;
+  const ppu=[];ppu[filteredUnits.length-1]=1;
+  for(let i=filteredUnits.length-2;i>=0;i--)ppu[i]=ppu[i+1]*(filteredUnits[i+1].qtyInParent||1);
+  let totalPieces=0;
+  filteredUnits.forEach((u,i)=>{const q=parseInt(g('fi-init-qty-'+i)?.value)||0;totalPieces+=q*ppu[i];});
+  const costPerBase=filteredUnits[0].costPrice||0;
+  const basePieces=ppu[0]||1;
+  const totalCost=costPerBase*(totalPieces/basePieces);
+  let preview=g('fi-cost-preview');
+  if(!preview){preview=document.createElement('div');preview.id='fi-cost-preview';preview.className='alert alert-info mt8';preview.style.fontSize='12px';sec.appendChild(preview);}
+  if(totalPieces>0&&totalCost>0){
+    preview.textContent='Total stock cost: ₦'+Number(totalCost).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2})+' ('+totalPieces+' '+filteredUnits[filteredUnits.length-1].name+'s)';
+    preview.style.display='block';
+  }else{preview.style.display='none';}
+}
+
+// ── ITEM 15/16: AI two modes + expanded queries ─────────────────
+function openAISettings(){
+  const panel=document.getElementById('ai-settings-panel');
+  if(panel)panel.style.display=panel.style.display==='none'?'block':'none';
+}
+
+function saveAISettings(){
+  const mode=document.getElementById('ai-mode-select')?.value||'offline';
+  const key=document.getElementById('ai-api-key')?.value?.trim()||'';
+  localStorage.setItem('shopdb_ai_mode',mode);
+  if(key)localStorage.setItem('shopdb_ai_key',key);
+  const panel=document.getElementById('ai-settings-panel');
+  if(panel)panel.style.display='none';
+  appendAIMsg('bot',mode==='online'&&key?'✅ Online mode enabled. Using Claude API.':'✅ Offline mode active. Using local knowledge base.');
+}
+
+async 
+function buildShopContext(){
+  const items=(DB.items||[]).slice(0,30).map(x=>`${x.name}: qty=${x.qty}, price=₦${x.price}, cost=₦${x.cost||0}`).join('\n');
+  const lowStock=(DB.items||[]).filter(x=>x.qty<=(x.low||5)&&x.qty>0).map(x=>x.name).join(', ');
+  const outStock=(DB.items||[]).filter(x=>x.qty===0).map(x=>x.name).join(', ');
+  const todayRecs=(DB.receipts||[]).filter(r=>{const d=new Date(r.date),n=new Date();return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();});
+  const todaySales=todayRecs.reduce((s,r)=>s+r.total,0);
+  const custDebts=(DB.customers||[]).filter(c=>(c.debt||0)>0).map(c=>`${c.name}: owes ₦${c.debt}`).join(', ');
+  const supDebts=(DB.suppliers||[]).filter(s=>(s.totalOwed||0)>0).map(s=>`${s.name}: ₦${s.totalOwed}`).join(', ');
+  return `Items (top 30):\n${items}\n\nLow stock: ${lowStock||'none'}\nOut of stock: ${outStock||'none'}\nToday's sales: ₦${todaySales} (${todayRecs.length} transactions)\nCustomer debts: ${custDebts||'none'}\nSupplier debts: ${supDebts||'none'}`;
+}
+
+
+// ── ITEM 7: Edit item with unit hierarchy ──────────────────────
+function openEditItem(id){
+  const x=DB.items.find(i=>i.id===id);if(!x)return;
+  sv('ei-id',id);sv('ei-expiry',x.expiry||'');sv('ei-img',x.img||'');
+  g('edit-img-preview').innerHTML=x.img?`<img src="${x.img}" style="max-height:100px;border-radius:7px"/>`:
+    '<div style="font-size:30px">📷</div><p>Click to change photo</p>';
+  const units=getUnits(x);
+  if(units.length>1){
+    g('ei-price').style.display='none';
+    g('ei-price').previousElementSibling&&(g('ei-price').previousElementSibling.style.display='none');
+    const unitPriceSection=document.getElementById('ei-unit-prices');
+    if(unitPriceSection){
+      unitPriceSection.innerHTML=units.map((u,i)=>`<div class="form-row"><label>${u.name} Sell Price (₦)</label><input type="number" id="ei-unit-price-${i}" value="${u.sellPrice||0}" oninput="onEiUnitPriceChange(${i})"/></div>`).join('');
+      unitPriceSection.style.display='block';
+    }
+  }else{
+    g('ei-price').style.display='';
+    sv('ei-price',x.price);
+    const unitPriceSection=document.getElementById('ei-unit-prices');
+    if(unitPriceSection)unitPriceSection.style.display='none';
+  }
+  openModal('modal-edit-item');
+}
+
+function onEiUnitPriceChange(idx){
+  // When user changes a unit price, don't auto-propagate — let them override
+}
+
+function saveEditItem(){
+  const id=v('ei-id'),x=DB.items.find(i=>i.id===id);if(!x)return;
+  const units=getUnits(x);
+  if(units.length>1){
+    units.forEach((u,i)=>{
+      const input=document.getElementById('ei-unit-price-'+i);
+      if(input){const newPrice=parseFloat(input.value)||0;u.sellPrice=newPrice;}
+    });
+    x.price=units[0].sellPrice||x.price;
+  }else{
+    const oldPrice=x.price,newPrice=f('ei-price');
+    if(newPrice&&newPrice!==oldPrice){
+      if(!DB.priceHistory)DB.priceHistory=[];
+      DB.priceHistory.push({itemId:id,itemName:x.name,oldPrice,newPrice,date:new Date().toLocaleString(),by:currentUser.name,reason:'Manual edit'});
+    }
+    x.price=newPrice;
+    if(newPrice&&newPrice!==oldPrice){ROOMS.forEach(r=>{const s=DB.storerooms[r]?.find(si=>si.id===id);if(s)s.price=newPrice;});}
+  }
+  x.expiry=v('ei-expiry');
+  const ni=v('ei-img');if(ni)x.img=ni;
+  // Sync price to all storerooms
+  ROOMS.forEach(r=>{const s=DB.storerooms[r]?.find(si=>si.id===id);if(s)s.price=x.price;});
+  save();closeModal('modal-edit-item');renderInventory();renderInvStats();renderPosItems();
+}
+
+// ── ITEM 2: Unit conversion display in add-item modal ──────────
+function refreshInitQtyInputs(){
+  const sec=g('fi-init-qty-section'),cont=g('fi-init-qty-inputs');
+  if(!sec||!cont)return;
+  const hasNames=newItemUnits.some(u=>u.name);
+  sec.style.display=hasNames?'block':'none';
+  const filteredUnits=newItemUnits.filter(u=>u.name);
+  cont.innerHTML=filteredUnits.map((u,i)=>{
+    let convStr='';
+    if(i<filteredUnits.length-1){const next=filteredUnits[i+1];const qip=filteredUnits[i+1].qtyInParent||1;convStr=`<span class="text-muted text-sm">(1 ${u.name} = ${qip} ${next.name})</span>`;}
+    return`<div class="flex items-center gap8 mb8">
+      <label style="width:100px;text-transform:none;font-size:13px;font-weight:600;color:var(--text)">${u.name}</label>
+      <input type="number" id="fi-init-qty-${i}" placeholder="0" min="0" style="width:80px" oninput="updateInitialStockCost()"/>
+      ${convStr}
+    </div>`;
+  }).join('');
+  // Update total cost preview
+  updateInitialStockCost();
+}
+
+function updateInitialStockCost(){
+  const sec=g('fi-init-qty-section');if(!sec)return;
+  const filteredUnits=newItemUnits.filter(u=>u.name);
+  if(!filteredUnits.length)return;
+  const ppu=[];ppu[filteredUnits.length-1]=1;
+  for(let i=filteredUnits.length-2;i>=0;i--)ppu[i]=ppu[i+1]*(filteredUnits[i+1].qtyInParent||1);
+  let totalPieces=0;
+  filteredUnits.forEach((u,i)=>{const q=parseInt(g('fi-init-qty-'+i)?.value)||0;totalPieces+=q*ppu[i];});
+  const costPerBase=filteredUnits[0].costPrice||0;
+  const basePieces=ppu[0]||1;
+  const totalCost=costPerBase*(totalPieces/basePieces);
+  let preview=g('fi-cost-preview');
+  if(!preview){preview=document.createElement('div');preview.id='fi-cost-preview';preview.className='alert alert-info mt8';preview.style.fontSize='12px';sec.appendChild(preview);}
+  if(totalPieces>0&&totalCost>0){
+    preview.textContent='Total stock cost: ₦'+Number(totalCost).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2})+' ('+totalPieces+' '+filteredUnits[filteredUnits.length-1].name+'s)';
+    preview.style.display='block';
+  }else{preview.style.display='none';}
+}
+
+// ── ITEM 15/16: AI two modes + expanded queries ─────────────────
+function openAISettings(){
+  const panel=document.getElementById('ai-settings-panel');
+  if(panel)panel.style.display=panel.style.display==='none'?'block':'none';
+}
+
+function saveAISettings(){
+  const mode=document.getElementById('ai-mode-select')?.value||'offline';
+  const key=document.getElementById('ai-api-key')?.value?.trim()||'';
+  localStorage.setItem('shopdb_ai_mode',mode);
+  if(key)localStorage.setItem('shopdb_ai_key',key);
+  const panel=document.getElementById('ai-settings-panel');
+  if(panel)panel.style.display='none';
+  appendAIMsg('bot',mode==='online'&&key?'✅ Online mode enabled. Using Claude API.':'✅ Offline mode active. Using local knowledge base.');
+}
+
+async function sendAIMessage(){
+  const input=g('ai-chat-input');
+  if(!input)return;
+  const text=input.value.trim();
+  if(!text)return;
+  input.value='';
+  appendAIMsg('user',text);
+  showAITyping();
+  const mode=localStorage.getItem('shopdb_ai_mode')||'offline';
+  const key=localStorage.getItem('shopdb_ai_key')||'';
+  if(mode==='online'&&key){
+    try{
+      const context=buildShopContext();
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:1000,
+          messages:[{role:'user',content:`You are an AI assistant for a shop called "${DB.shopSettings?.name||'Ado Salisu Sarki Mai Charbi'}". Answer in the same language as the question (English or Hausa). Be concise.\n\nShop Data:\n${context}\n\nQuestion: ${text}`}]
+        })
+      });
+      if(!res.ok)throw new Error('API error '+res.status);
+      const data=await res.json();
+      hideAITyping();
+      const answer=data.content?.map(c=>c.text||'').join('').trim()||'No response.';
+      appendAIMsg('bot',answer);
+      return;
+    }catch(e){console.log('Claude API failed, falling back:',e);}
+  }
+  setTimeout(function(){
+    hideAITyping();
+    appendAIMsg('bot',ShopAI.query(text));
+  },400);
+}
+
+function buildShopContext(){
+  const items=(DB.items||[]).slice(0,30).map(x=>`${x.name}: qty=${x.qty}, price=₦${x.price}, cost=₦${x.cost||0}`).join('\n');
+  const lowStock=(DB.items||[]).filter(x=>x.qty<=(x.low||5)&&x.qty>0).map(x=>x.name).join(', ');
+  const outStock=(DB.items||[]).filter(x=>x.qty===0).map(x=>x.name).join(', ');
+  const todayRecs=(DB.receipts||[]).filter(r=>{const d=new Date(r.date),n=new Date();return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();});
+  const todaySales=todayRecs.reduce((s,r)=>s+r.total,0);
+  const custDebts=(DB.customers||[]).filter(c=>(c.debt||0)>0).map(c=>`${c.name}: owes ₦${c.debt}`).join(', ');
+  const supDebts=(DB.suppliers||[]).filter(s=>(s.totalOwed||0)>0).map(s=>`${s.name}: ₦${s.totalOwed}`).join(', ');
+  return `Items (top 30):\n${items}\n\nLow stock: ${lowStock||'none'}\nOut of stock: ${outStock||'none'}\nToday's sales: ₦${todaySales} (${todayRecs.length} transactions)\nCustomer debts: ${custDebts||'none'}\nSupplier debts: ${supDebts||'none'}`;
+}
+
+// ── ITEM 12: Delivery cart functions ───────────────────────────
+var deliveryCartRows = [];
+var deliveryCartCount = 0;
+
+function addDeliveryCartRow(){
+  deliveryCartCount++;
+  const n = deliveryCartCount;
+  const row = document.createElement('div');
+  row.id = 'dcr-'+n;
+  row.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px';
+  const itemOpts = (DB.items||[]).map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+  row.innerHTML = `<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:flex-start">
+    <div>
+      <div class="form-row"><label>Item</label><select id="dcr-item-${n}" onchange="onDeliveryCartItemChange(${n})"><option value="">— Select item —</option>${itemOpts}</select></div>
+      <div id="dcr-qty-section-${n}" style="display:none">
+        <div id="dcr-unit-qtys-${n}"></div>
+        <div class="form-row-2"><div><label>Cost Price (₦) per largest unit</label><input type="number" id="dcr-cost-${n}" placeholder="0" oninput="calcDeliveryCartRow(${n})"/></div><div><label>Row Total (₦)</label><input type="number" id="dcr-total-${n}" readonly style="color:var(--accent3)"/></div></div>
+        <div class="form-row"><label>Destination</label><select id="dcr-dest-${n}"><option value="shop">🏪 Shop</option>${(typeof ROOMS!=='undefined'?ROOMS:[]).map(r=>`<option value="${r}">🏠 ${r}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Sell Price at Destination (₦)</label><input type="number" id="dcr-sell-${n}" placeholder="0"/></div>
+      </div>
+    </div>
+    <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="removeDeliveryCartRow(${n})">×</button>
+  </div>`;
+  g('del-cart-rows').appendChild(row);
+  deliveryCartRows.push(n);
+}
+
+function removeDeliveryCartRow(n){
+  const row = g('dcr-'+n);if(row)row.remove();
+  deliveryCartRows = deliveryCartRows.filter(x=>x!==n);
+  calcDeliveryCartTotal();
+}
+
+function onDeliveryCartItemChange(n){
+  const itemId = g(`dcr-item-${n}`)?.value;
+  const item = itemId ? DB.items.find(x=>x.id===itemId) : null;
+  const qtySection = g(`dcr-qty-section-${n}`);
+  if(!item || !qtySection){ if(qtySection)qtySection.style.display='none'; return; }
+  qtySection.style.display='block';
+  const units = getUnits(item);
+  const ppu = []; ppu[units.length-1]=1;
+  for(let i=units.length-2;i>=0;i--)ppu[i]=ppu[i+1]*units[i+1].qtyInParent;
+  const cont = g(`dcr-unit-qtys-${n}`);
+  if(cont){
+    cont.innerHTML = units.map((u,i)=>`<div class="flex items-center gap8 mb6"><label style="width:90px;text-transform:none;font-size:12px;font-weight:600">${u.name}</label><input type="number" id="dcr-uqty-${n}-${i}" placeholder="0" min="0" style="width:70px" oninput="calcDeliveryCartRow(${n})"/><span class="text-muted text-sm">${ppu[i]>1?'('+ppu[i]+' '+units[units.length-1].name+'s each)':''}</span></div>`).join('');
+  }
+  sv(`dcr-sell-${n}`, item.price||'');
+}
+
+function calcDeliveryCartRow(n){
+  const itemId = g(`dcr-item-${n}`)?.value;
+  const item = itemId ? DB.items.find(x=>x.id===itemId) : null;
+  if(!item) return;
+  const units = getUnits(item);
+  const ppu = []; ppu[units.length-1]=1;
+  for(let i=units.length-2;i>=0;i--)ppu[i]=ppu[i+1]*units[i+1].qtyInParent;
+  const cost = parseFloat(g(`dcr-cost-${n}`)?.value)||0;
+  let totalPieces=0, totalCost=0;
+  units.forEach((u,i)=>{ const q=parseInt(g(`dcr-uqty-${n}-${i}`)?.value)||0; if(q>0){ totalPieces+=q*ppu[i]; totalCost+=q*(cost*(ppu[i]/ppu[0])); } });
+  sv(`dcr-total-${n}`, totalCost.toFixed(2));
+  calcDeliveryCartTotal();
+}
+
+function calcDeliveryCartTotal(){
+  let grand=0;
+  deliveryCartRows.forEach(n=>{ grand+=parseFloat(g(`dcr-total-${n}`)?.value)||0; });
+  const el=g('del-grand-total');if(el)el.textContent='₦'+Number(grand).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function recordDeliveryCart(){
+  if(!currentSupId)return;
+  const sup=DB.suppliers.find(s=>s.id===currentSupId);
+  if(!deliveryCartRows.length){alert('Add at least one item to the delivery.');return;}
+  const now=new Date().toLocaleString();
+  let totalDeliveryValue=0;let allOk=true;
+  const toProcess=[];
+  deliveryCartRows.forEach(n=>{
+    const itemId=g(`dcr-item-${n}`)?.value;if(!itemId)return;
+    const item=DB.items.find(x=>x.id===itemId);if(!item){allOk=false;alert('Item not found.');return;}
+    const units=getUnits(item);
+    const ppu=[];ppu[units.length-1]=1;
+    for(let i=units.length-2;i>=0;i--)ppu[i]=ppu[i+1]*units[i+1].qtyInParent;
+    const cost=parseFloat(g(`dcr-cost-${n}`)?.value)||0;
+    let totalPieces=0;const breakdown=[];let totalCost=0;
+    units.forEach((u,i)=>{ const q=parseInt(g(`dcr-uqty-${n}-${i}`)?.value)||0; if(q>0){ totalPieces+=q*ppu[i];breakdown.push(`${q} ${u.name}`); totalCost+=q*(cost*(ppu[i]/ppu[0])); } });
+    if(totalPieces===0)return;
+    const dest=g(`dcr-dest-${n}`)?.value||'shop';
+    const sellPrice=parseFloat(g(`dcr-sell-${n}`)?.value)||0;
+    toProcess.push({item,units,ppu,cost,totalPieces,breakdown,totalCost,dest,sellPrice});
+    totalDeliveryValue+=totalCost;
+  });
+  if(!allOk||!toProcess.length){alert('Please fill in all item details.');return;}
+  toProcess.forEach(d=>{
+    if(d.dest==='shop'){ d.item.qty+=d.totalPieces; if(d.sellPrice)d.item.price=d.sellPrice; d.item.lastRestocked=now; }
+    else{ const stocks=DB.storerooms[d.dest];const ex=stocks.find(s=>s.id===d.item.id); if(ex){ex.qty+=d.totalPieces;if(d.sellPrice)ex.price=d.sellPrice;}else stocks.push({id:d.item.id,name:d.item.name,qty:d.totalPieces,price:d.sellPrice||d.item.price,dateAdded:now}); DB.roomLogs.unshift({type:'DELIVERY',room:d.dest,item:d.item.name,qty:d.totalPieces,breakdown:d.breakdown.join(' + '),sellPrice:d.sellPrice,date:now,by:currentUser.name,supplier:sup?.name}); }
+    if(sup){ if(!sup.deliveries)sup.deliveries=[]; sup.deliveries.unshift({id:ts(),date:now,item:d.item.name,itemId:d.item.id,breakdown:d.breakdown.join(' + '),totalPieces:d.totalPieces,costPerLargest:d.cost,totalCost:d.totalCost,largestUnit:d.units[0]?.name||d.item.unit,distributions:[{dest:d.dest,qty:d.totalPieces}],supplierId:currentSupId}); if(sup.totalOwed===undefined)sup.totalOwed=0; sup.totalOwed+=d.totalCost; }
+    if(!DB.itemHistory)DB.itemHistory=[];
+    DB.itemHistory.push({type:'delivery',itemId:d.item.id,itemName:d.item.name,breakdown:d.breakdown.join(' + '),totalPieces:d.totalPieces,costPerLargest:d.cost,totalCost:d.totalCost,supplier:sup?.name||'',date:now,by:currentUser.name});
+  });
+  save();
+  // Reset cart
+  deliveryCartRows=[];deliveryCartCount=0;
+  if(g('del-cart-rows'))g('del-cart-rows').innerHTML='';
+  if(g('del-grand-total'))g('del-grand-total').textContent='₦0.00';
+  closeModal('modal-sup-delivery');
+  openSupDetail(currentSupId);
+  if(currentRoom){renderRoomStats();renderRoomItems();renderRoomLog();}
+  alert(`✅ Delivery recorded! ${toProcess.length} item${toProcess.length>1?'s':''} · Total: ₦${Number(totalDeliveryValue).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2})}`);
+}
+
+
+// =================== AI SHOP ASSISTANT ===================
+var ShopAI = {
+  open: false,
+  greetings: {
+    en: `Hi! I'm your shop assistant. I understand English and Hausa.\n\nTry asking:\n\u2022 "How much does John owe?"\n\u2022 "What are the low stock items?"\n\u2022 "Today's sales"\n\u2022 "How much rice do we have?"\n\u2022 Type "help" for more.`,
+    ha: `Sannu! Ni mataimakinka na kantin. Na fahimci Hausa da Turanci.\n\nZaka tambaya:\n\u2022 "Nawa Musa yake bin ni?"\n\u2022 "Kaya masu karewa"\n\u2022 "Tallacen yau"\n\u2022 Rubuta "taimako" don karin bayani.`
+  },
+  detectLang: function(text) {
+    var hk = ["nawa","muka","yake","take","muke","bin","bashi","kaya","yau","tallace","siyar","siyi","kadan","karewa","riba","gaya","game","wane","kashewa","muna","haka","kuma","amma","don"];
+    var words = text.toLowerCase().split(/\s+/);
+    var hCount = words.filter(function(w){ return hk.indexOf(w) >= 0; }).length;
+    return hCount >= 1 ? "ha" : "en";
+  },
+  fmt: function(n){ return Number(n).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2}); },
+  findCustomer: function(e) { if(!e)return null; return (DB.customers||[]).filter(function(c){ return c.name.toLowerCase().indexOf(e.toLowerCase())>=0; }); },
+  findSupplier: function(e) { if(!e)return null; return (DB.suppliers||[]).filter(function(s){ return s.name.toLowerCase().indexOf(e.toLowerCase())>=0; }); },
+  findItem: function(e) { if(!e)return null; return (DB.items||[]).filter(function(x){ return x.name.toLowerCase().indexOf(e.toLowerCase())>=0; }); },
+  extractName: function(text, patterns) {
+    for(var i=0;i<patterns.length;i++){ var m=text.match(patterns[i]); if(m&&m[1])return m[1].trim().replace(/[?!.]/g,""); }
+    return null;
+  },
+  query: function(text) {
+    var t = text.toLowerCase().trim();
+    var lang = this.detectLang(t);
+    var f = this.fmt;
+
+    // HELP
+    if(/^(help|taimako|me zaka|what can)/.test(t)) {
+      return lang==="ha"
+        ? `Zaka tambayata:\n\n\u2022 "Nawa Musa yake bin ni?" \u2014 bashi abokin ciniki\n\u2022 "Nawa muke bin Sani?" \u2014 bashi mai kaya\n\u2022 "Kaya masu karewa" \u2014 low stock\n\u2022 "Nawa Shinkafa muke da shi?" \u2014 stock kaya\n\u2022 "Tallacen yau" \u2014 siyarwar yau\n\u2022 "Nawa Shinkafa muka siyar?" \u2014 tarihin siyarwa\n\u2022 "Riban yau" \u2014 riba\n\u2022 "Kayan da suka fi siyarwa" \u2014 best sellers\n\u2022 "Kashewar wannan wata" \u2014 kashewa\n\u2022 "Nawa muka siyo Rice?" \u2014 kudin siya`
+        : `You can ask me:\n\n\u2022 "How much does John owe?" \u2014 customer debt\n\u2022 "How much do we owe Sani?" \u2014 supplier debt\n\u2022 "Low stock items" \u2014 what's running out\n\u2022 "How much Rice do we have?" \u2014 item stock\n\u2022 "Today's sales" \u2014 revenue today\n\u2022 "How much Rice did we sell?" \u2014 item sales\n\u2022 "Today's profit" \u2014 net profit\n\u2022 "Best selling items" \u2014 top sellers\n\u2022 "This month's expenses" \u2014 spending\n\u2022 "How much did we buy Rice?" \u2014 purchase cost`;
+    }
+
+    // CUSTOMER DEBT
+    var custDebtPat = [/how much (?:does|do) (.+?) owe/i,/what does (.+?) owe/i,/(.+?)(?:'s)? debt/i,/debt (?:of|for) (.+)/i,/nawa (.+?) yake bin/i,/nawa (.+?) take bin/i,/bashi (.+)/i,/(.+?) na bin/i];
+    var custName = this.extractName(t, custDebtPat);
+    if(custName && !/supplier|mai kaya|muke bin/.test(t)) {
+      var custs = this.findCustomer(custName);
+      if(!custs||!custs.length) return lang==="ha" ? `Ba a sami abokin ciniki "${custName}" ba.` : `No customer found named "${custName}".`;
+      return custs.slice(0,3).map(function(c){ var d=c.debt||0; return lang==="ha" ? `${c.name}: ${d>0?`yana bin ku \u20a6${f(d)}`:"babu bashi"}` : `${c.name}: ${d>0?`owes \u20a6${f(d)}`:"no debt"}`; }).join("\n");
+    }
+
+    // SUPPLIER DEBT
+    var supDebtPat = [/how much do we owe (.+)/i,/what do we owe (.+)/i,/we owe (.+)/i,/(.+?) balance/i,/nawa muke bin (.+)/i,/muke da bashi (.+)/i,/nawa muka bin (.+)/i];
+    var supName = this.extractName(t, supDebtPat);
+    if(supName || /how much do we owe|muke bin|supplier.*debt|nawa muke bin/.test(t)) {
+      if(!supName) {
+        var owing = (DB.suppliers||[]).filter(function(s){ return (s.totalOwed||0)>0; });
+        if(!owing.length) return lang==="ha" ? "Ba ku bin wani mai kaya kudi ba. \u2705" : "You don't owe any suppliers. \u2705";
+        var tot = owing.reduce(function(s,x){ return s+x.totalOwed; },0);
+        var list = owing.slice(0,6).map(function(s){ return `\u2022 ${s.name}: \u20a6${f(s.totalOwed)}`; }).join("\n");
+        return (lang==="ha" ? `Kuna bin wad\u0061nnan masu kaya \u20a6${f(tot)}:\n` : `Total owed to suppliers: \u20a6${f(tot)}:\n`) + list;
+      }
+      var sups = this.findSupplier(supName);
+      if(!sups||!sups.length) return lang==="ha" ? `Ba a sami mai kaya "${supName}" ba.` : `No supplier found named "${supName}".`;
+      return sups.slice(0,3).map(function(s){ var o=s.totalOwed||0; return lang==="ha" ? `${s.name}: ${o>0?`kuna bin su \u20a6${f(o)}`:o<0?`suna bin ku \u20a6${f(Math.abs(o))}`:"lissafin ya daidaita"}` : `${s.name}: ${o>0?`you owe \u20a6${f(o)}`:o<0?`they owe you \u20a6${f(Math.abs(o))}`:"settled"}`; }).join("\n");
+    }
+
+    // LOW STOCK
+    if(/low stock|running out|almost empty|kaya masu karewa|kaya kadan|abubuwan.*karewa|stock.*low/.test(t)) {
+      var low = (DB.items||[]).filter(function(x){ return x.qty>0&&x.qty<=(x.low||5); });
+      var out = (DB.items||[]).filter(function(x){ return x.qty===0; });
+      if(!low.length&&!out.length) return lang==="ha" ? "Duk kaya suna da isasshen adadi. \u2705" : "All items have sufficient stock. \u2705";
+      var resp = "";
+      if(out.length){ resp += (lang==="ha"?`\u274c Kayan da suka kare (${out.length}):\n`:`\u274c Out of stock (${out.length}):\n`); resp += out.slice(0,8).map(function(x){ return `\u2022 ${x.name}`; }).join("\n"); if(out.length>8)resp+=`\n\u2022 ...da ${out.length-8} karin`; }
+      if(low.length){ if(resp)resp+="\n\n"; resp += (lang==="ha"?`\u26a0\ufe0f Kayan da suke karewa (${low.length}):\n`:`\u26a0\ufe0f Low stock (${low.length}):\n`); resp += low.slice(0,8).map(function(x){ return `\u2022 ${x.name}: ${x.qty} left`; }).join("\n"); }
+      return resp;
+    }
+
+    // ITEM STOCK
+    var stockPat = [/stock (?:of|for) (.+)/i,/how much (.+?) do we have/i,/(?:qty|quantity) of (.+)/i,/(.+?) stock/i,/nawa (.+?) muke da/i,/nawa (.+?) muka samu/i,/yawan (.+)/i];
+    var stockItem = this.extractName(t, stockPat);
+    if(stockItem && !/sale|sold|siyar|tallace/.test(t)) {
+      var items = this.findItem(stockItem);
+      if(!items||!items.length) return lang==="ha" ? `Ba a sami kaya "${stockItem}" ba.` : `No item found named "${stockItem}".`;
+      return items.slice(0,4).map(function(x){
+        var units=(x.units&&x.units.length)?x.units:[{name:x.unit||"piece"}];
+        var sUnit=units[units.length-1].name;
+        var shopLine=(lang==="ha"?"Kantin: ":"Shop: ")+x.qty+" "+sUnit;
+        var roomLines=ROOMS.map(function(r){ var rs=DB.storerooms[r]&&DB.storerooms[r].find(function(s){ return s.id===x.id; }); return rs&&rs.qty>0?`${r}: ${rs.qty}`:null; }).filter(Boolean);
+        return `${x.name}\n${shopLine}${roomLines.length?"\n"+roomLines.join(", "):""}`;
+      }).join("\n\n");
+    }
+
+    // TODAY'S SALES
+    if(/today.s sales|sales today|how much today|tallacen yau|nawa muka siyar yau|kudin yau|yau muka siyar/.test(t)) {
+      var now = new Date();
+      var todayRecs = (DB.receipts||[]).filter(function(r){ var d=new Date(r.date); return d.getDate()===now.getDate()&&d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); });
+      var tot2 = todayRecs.reduce(function(s,r){ return s+r.total; },0);
+      return lang==="ha"
+        ? `Tallacen yau:\n\u2022 Adadin siyarwa: ${todayRecs.length}\n\u2022 Jimilla: \u20a6${f(tot2)}`
+        : `Today's sales:\n\u2022 Transactions: ${todayRecs.length}\n\u2022 Total: \u20a6${f(tot2)}`;
+    }
+
+    // MONTHLY SALES
+    if(/how much.*sell this month|monthly sales|this month.*sales|nawa muka sayar a watan nan|tallacen watan nan|siyarwar wata/.test(t)) {
+      var mn=new Date(), mStart=new Date(mn.getFullYear(),mn.getMonth(),1);
+      var mRecs=(DB.receipts||[]).filter(function(r){ return new Date(r.date)>=mStart; });
+      var mSales=mRecs.reduce(function(s,r){ return s+r.total; },0);
+      return lang==="ha"
+        ? `Siyarwar wannan wata:\n\u2022 Adadin siyarwa: ${mRecs.length}\n\u2022 Jimilla: \u20a6${f(mSales)}`
+        : `This month's sales:\n\u2022 Transactions: ${mRecs.length}\n\u2022 Total: \u20a6${f(mSales)}`;
+    }
+
+    // ITEM SALES HISTORY
+    var salesPat = [/how much (.+?) (?:have we|did we) sell/i,/sales of (.+)/i,/how many (.+?) sold/i,/nawa (.+?) muka siyar/i,/nawa muka siyi (.+)/i,/tallacen (.+)/i];
+    var salesItem = this.extractName(t, salesPat);
+    if(salesItem) {
+      var si=(DB.items||[]).find(function(x){ return x.name.toLowerCase().indexOf(salesItem.toLowerCase())>=0; });
+      if(!si) return lang==="ha" ? `Ba a sami kaya "${salesItem}" ba.` : `No item found named "${salesItem}".`;
+      var sales=(DB.itemHistory||[]).filter(function(h){ return h.type==="sale"&&h.itemId===si.id; });
+      var tQty=sales.reduce(function(s,h){ return s+(h.totalPieces||h.qty||0); },0);
+      var tRev=sales.reduce(function(s,h){ return s+((h.price||0)-(h.disc||0))*(h.qty||1); },0);
+      var sUnit2=(si.units&&si.units.length)?si.units[si.units.length-1].name:(si.unit||"pcs");
+      return lang==="ha"
+        ? `${si.name}:\n\u2022 Yawan da aka siyar: ${tQty} ${sUnit2}\n\u2022 Kudaden da aka samu: \u20a6${f(tRev)}`
+        : `${si.name}:\n\u2022 Total sold: ${tQty} ${sUnit2}\n\u2022 Revenue: \u20a6${f(tRev)}`;
+    }
+
+    // PURCHASE COST
+    var purchPat = [/how much (?:did we buy|did we pay for|does) (.+?) cost/i,/purchase cost (?:of|for) (.+)/i,/nawa muka siyo (.+)/i,/nawa muka sayi (.+)/i,/farashi (.+)/i];
+    var purchItem = this.extractName(t, purchPat);
+    if(purchItem) {
+      var pi=(DB.items||[]).find(function(x){ return x.name.toLowerCase().indexOf(purchItem.toLowerCase())>=0; });
+      if(!pi) return lang==="ha" ? `Ba a sami kaya "${purchItem}" ba.` : `No item found named "${purchItem}".`;
+      var delHist=(DB.itemHistory||[]).filter(function(h){ return h.type==="delivery"&&h.itemId===pi.id; });
+      var totalSpent=delHist.reduce(function(s,h){ return s+(h.totalCost||0); },0);
+      var totalBought=delHist.reduce(function(s,h){ return s+(h.totalPieces||0); },0);
+      var piUnit=(pi.units&&pi.units.length)?pi.units[pi.units.length-1].name:(pi.unit||"pcs");
+      return lang==="ha"
+        ? `${pi.name}:\n\u2022 Jimlar kudin siya: \u20a6${f(totalSpent)}\n\u2022 Adadin da aka siya: ${totalBought} ${piUnit}`
+        : `${pi.name}:\n\u2022 Total purchase cost: \u20a6${f(totalSpent)}\n\u2022 Total bought: ${totalBought} ${piUnit}`;
+    }
+
+    // PROFIT
+    if(/profit|earnings|how much.*make|riba|fa.ida|nawa muka samu/.test(t)) {
+      var n2=new Date();
+      var pRecs=(DB.receipts||[]).filter(function(r){ var d=new Date(r.date); return d.getDate()===n2.getDate()&&d.getMonth()===n2.getMonth()&&d.getFullYear()===n2.getFullYear(); });
+      var pSales=pRecs.reduce(function(s,r){ return s+r.total; },0);
+      var pProfit=0;
+      pRecs.forEach(function(r){ r.items.forEach(function(x){ var h=(DB.itemHistory||[]).find(function(hh){ return hh.type==="sale"&&hh.receiptId===r.id&&hh.itemId===x.id; }); var cost=h&&h.costAtSale!==undefined?h.costAtSale:0; var rev=((x.price||0)-(x.disc||0))*x.qty; pProfit+=rev-cost; }); });
+      return lang==="ha"
+        ? `Riban yau:\n\u2022 Tallace: \u20a6${f(pSales)}\n\u2022 Riba: \u20a6${f(pProfit)}`
+        : `Today's profit:\n\u2022 Sales: \u20a6${f(pSales)}\n\u2022 Net profit: \u20a6${f(pProfit)}`;
+    }
+
+    // BEST SELLERS
+    if(/best sell|top items|most popular|most sold|kayan.*fi siyarwa|mafi siyarwa|mafi tallace/.test(t)) {
+      var sales2={};
+      (DB.itemHistory||[]).filter(function(h){ return h.type==="sale"; }).forEach(function(h){ if(!sales2[h.itemId])sales2[h.itemId]={name:h.itemName,qty:0,rev:0}; sales2[h.itemId].qty+=(h.totalPieces||h.qty||0); sales2[h.itemId].rev+=((h.price||0)-(h.disc||0))*(h.qty||1); });
+      var sorted=Object.values(sales2).sort(function(a,b){ return b.rev-a.rev; }).slice(0,5);
+      if(!sorted.length) return lang==="ha" ? "Babu tarihin siyarwa tukuna." : "No sales history yet.";
+      var list2=sorted.map(function(x,i){ return `${i+1}. ${x.name} \u2014 \u20a6${f(x.rev)}`; }).join("\n");
+      return (lang==="ha" ? "Kayan da suka fi siyarwa:\n" : "Best selling items:\n") + list2;
+    }
+
+    // MONTHLY EXPENSES
+    if(/expenses|how much.*spent|spending|kashewa|kudin kashewa|nawa muka kashewa/.test(t)) {
+      var nd=new Date(), ms=new Date(nd.getFullYear(),nd.getMonth(),1);
+      var mExps=(DB.expenses||[]).filter(function(e){ return new Date(e.date)>=ms; });
+      var mTot=mExps.reduce(function(s,e){ return s+e.amount; },0);
+      return lang==="ha"
+        ? `Kashewar wannan wata:\n\u2022 Adadi: ${mExps.length}\n\u2022 Jimilla: \u20a6${f(mTot)}`
+        : `This month's expenses:\n\u2022 Entries: ${mExps.length}\n\u2022 Total: \u20a6${f(mTot)}`;
+    }
+
+    // OVERVIEW
+    if(/how many (customers|items|suppliers)|summary|overview/.test(t)) {
+      return `Overview:\n\u2022 Items: ${(DB.items||[]).length}\n\u2022 Customers: ${(DB.customers||[]).length}\n\u2022 Suppliers: ${(DB.suppliers||[]).length}\n\u2022 Total receipts: ${(DB.receipts||[]).length}`;
+    }
+
+    return lang==="ha"
+      ? "Yi hakuri, ban fahimci tambayar ba. Rubuta \"taimako\" don ganin abin da zan iya yi."
+      : "I didn't understand that. Type \"help\" to see what I can do, or try rephrasing.";
+  }
+};
+
+function toggleAIChat() {
+  var win = g("ai-chat-window");
+  var fab = g("ai-chat-fab");
+  if(!win || !fab) return;
+  ShopAI.open = !ShopAI.open;
+  win.style.display = ShopAI.open ? "flex" : "none";
+  fab.classList.toggle("open", ShopAI.open);
+  if(ShopAI.open) {
+    // Load saved AI settings
+    var savedMode = localStorage.getItem("shopdb_ai_mode")||"offline";
+    var savedKey = localStorage.getItem("shopdb_ai_key")||"";
+    var modeSel = g("ai-mode-select");
+    if(modeSel) modeSel.value = savedMode;
+    var keyInp = g("ai-api-key");
+    if(keyInp && savedKey) keyInp.value = savedKey;
+    if(g("ai-chat-messages").children.length === 0) {
+      appendAIMsg("bot", ShopAI.greetings["en"]);
+    }
+    setTimeout(function(){ var el=g("ai-chat-input"); if(el)el.focus(); }, 100);
+  }
+}
+
+function appendAIMsg(type, text) {
+  var msgs = g("ai-chat-messages");
+  if(!msgs) return;
+  var div = document.createElement("div");
+  div.className = type === "user" ? "ai-msg-user" : "ai-msg-bot";
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showAITyping() {
+  var msgs = g("ai-chat-messages");
+  if(!msgs) return;
+  var div = document.createElement("div");
+  div.className = "ai-typing";
+  div.id = "ai-typing-indicator";
+  div.innerHTML = "<span></span><span></span><span></span>";
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function hideAITyping() {
+  var el = document.getElementById("ai-typing-indicator");
+  if(el) el.remove();
+}
+
+
+</script>
+
+<!-- AI Shop Assistant -->
+<div id="ai-chat-fab" onclick="toggleAIChat()" title="AI Assistant">🤖</div>
+<div id="ai-chat-window" style="display:none;flex-direction:column">
+  <div id="ai-chat-header">
+    <div>
+      <div style="font-size:13px;font-weight:800;color:var(--text)">🤖 AI Assistant</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px">English &amp; Hausa · Works offline</div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="openAISettings()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 4px;" title="Settings">⚙️</button>
+      <button onclick="toggleAIChat()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;">✕</button>
+    </div>
+  </div>
+  <div id="ai-settings-panel" style="display:none;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface2)">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase">AI Mode</div>
+    <select id="ai-mode-select" style="width:100%;margin-bottom:6px;font-size:12px">
+      <option value="offline">🔌 Offline (Rule-based)</option>
+      <option value="online">☁️ Online (Claude API)</option>
+    </select>
+    <input id="ai-api-key" type="password" placeholder="Claude API key (for online mode)" style="width:100%;font-size:11px;margin-bottom:6px"/>
+    <button class="btn btn-gold btn-sm" style="width:100%" onclick="saveAISettings()">Save</button>
+  </div>
+  <div id="ai-chat-messages"></div>
+  <div id="ai-chat-input-wrap">
+    <input id="ai-chat-input" placeholder="Ask in English or Hausa..."
+      onkeydown="if(event.key===&quot;Enter&quot;&&!event.shiftKey){event.preventDefault();sendAIMessage();}"/>
+    <button id="ai-chat-send" onclick="sendAIMessage()">&#10148;</button>
+  </div>
+</div>
+
+
+<script>
+// ===== SAFARI IPAD STORAGE FIX =====
+_historyRotateTimer = null;
+
+function rotateBackupHistory() {
+  try {
+    const current = JSON.stringify(DB);
+    for (let i = 5; i >= 2; i--) {
+      const prev = localStorage.getItem('shopdb_history_' + (i - 1));
+      if (prev) { try { localStorage.setItem('shopdb_history_' + i, prev); } catch(e) {} }
+      const prevTime = localStorage.getItem('shopdb_history_' + (i - 1) + '_time');
+      if (prevTime) { try { localStorage.setItem('shopdb_history_' + i + '_time', prevTime); } catch(e) {} }
+    }
+    localStorage.setItem('shopdb_history_1', current);
+    localStorage.setItem('shopdb_history_1_time', new Date().toLocaleString());
+  } catch(e) {
+    try {
+      for (let i = 1; i <= 5; i++) { localStorage.removeItem('shopdb_history_' + i); localStorage.removeItem('shopdb_history_' + i + '_time'); }
+      localStorage.setItem('shopdb_history_1', JSON.stringify(DB));
+      localStorage.setItem('shopdb_history_1_time', new Date().toLocaleString());
+    } catch(e2) {}
+  }
+}
+
+function trimDBForStorage() {
+  if ((DB.itemHistory||[]).length > 300) DB.itemHistory = DB.itemHistory.slice(-300);
+  if ((DB.roomLogs||[]).length > 200) DB.roomLogs = DB.roomLogs.slice(-200);
+  if ((DB.priceHistory||[]).length > 100) DB.priceHistory = DB.priceHistory.slice(-100);
+  if ((DB.receipts||[]).length > 500) DB.receipts = DB.receipts.slice(-500);
+  if ((DB.expenses||[]).length > 300) DB.expenses = DB.expenses.slice(-300);
+  if ((DB.supPayReceipts||[]).length > 200) DB.supPayReceipts = DB.supPayReceipts.slice(-200);
+}
+
+function freeStorageSpace() {
+  for (let i = 1; i <= 5; i++) { localStorage.removeItem('shopdb_history_' + i); localStorage.removeItem('shopdb_history_' + i + '_time'); }
+  localStorage.removeItem('shopdb_auto_backup'); localStorage.removeItem('shopdb_auto_backup_time');
+  localStorage.removeItem('shopdb_gdrive_pending');
+}
+
+function save() {
+  trimDBForStorage();
+  try { localStorage.setItem('shopdb_v3', JSON.stringify(DB)); }
+  catch(e) {
+    try { freeStorageSpace(); localStorage.setItem('shopdb_v3', JSON.stringify(DB)); }
+    catch(e2) {
+      try {
+        const slim = { items:DB.items, receipts:(DB.receipts||[]).slice(-300), suppliers:DB.suppliers, customers:DB.customers, storerooms:DB.storerooms, staff:DB.staff, shopSettings:DB.shopSettings, expSuppliers:DB.expSuppliers, expenses:(DB.expenses||[]).slice(-300), rooms:DB.rooms, receiptCounter:DB.receiptCounter, lastBackup:DB.lastBackup, savedSupplyItems:DB.savedSupplyItems, itemHistory:[], roomLogs:[], priceHistory:[] };
+        freeStorageSpace(); localStorage.setItem('shopdb_v3', JSON.stringify(slim));
+        DB.itemHistory=[]; DB.roomLogs=[]; DB.priceHistory=[];
+      } catch(e3) { console.error('Save failed completely:', e3); }
+    }
+  }
+  try { if (currentUser) localStorage.setItem('shopdb_session', JSON.stringify({id:currentUser.id,ts:Date.now()})); } catch(e) {}
+  clearTimeout(_historyRotateTimer);
+  _historyRotateTimer = setTimeout(rotateBackupHistory, 60000);
+  try {
+    if (localStorage.getItem('shopdb_gdrive_token')) {
+      clearTimeout(_saveDebounceTimer);
+      _saveDebounceTimer = setTimeout(async () => {
+        if (navigator.onLine) { await uploadAndMerge(); }
+        else { localStorage.setItem('shopdb_gdrive_pending', 'true'); }
+      }, 10000);
+    }
+  } catch(e) {}
+}
+
+function load() {
+  try {
+    const d = localStorage.getItem('shopdb_v3');
+    if (d) { DB = JSON.parse(d); if (DB.rooms && DB.rooms.length) { ROOMS.length=0; DB.rooms.forEach(r=>ROOMS.push(r)); ROOMS.forEach(r=>{if(!DB.storerooms[r])DB.storerooms[r]=[];}); } }
+  } catch(e) {}
+}
+
+window.addEventListener('DOMContentLoaded', () => { setTimeout(()=>{ let t=0; for(let k in localStorage){ if(localStorage.hasOwnProperty(k)) t+=(localStorage.getItem(k)||'').length+k.length; } if(t>4000000) console.warn('Storage getting full! Backup recommended.'); }, 3000); });
+console.log('✅ Safari Storage Fix loaded.');
 </script>
 </body>
 </html>
