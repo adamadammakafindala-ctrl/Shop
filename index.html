@@ -13,7 +13,7 @@
   --text:#f0f0f0;--muted:#8890b0;--danger:#e94560;--success:#0f9b58;
   --radius:12px;--shadow:0 4px 24px rgba(0,0,0,0.35);
   --input-bg:#13162a;--input-border:#2d3154;--input-focus:#1a1d2e;
-  --sidebar-bg:#0d0f1d;--sidebar-w:220px;--sidebar-collapsed:64px;
+  --sidebar-bg:#0d0f1d;--sidebar-w:220px;--sidebar-collapsed:52px;
   --hover-row:rgba(255,255,255,0.04);
 }
 /* LIGHT MODE */
@@ -114,40 +114,244 @@ body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;min-
 #app{display:none;}
 #app.visible{display:flex;min-height:100vh;width:100%;}
 
-.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--sidebar-bg);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:300;transition:width 0.22s cubic-bezier(.4,0,.2,1);overflow:hidden;border-right:1px solid rgba(255,255,255,0.06);}
-.sidebar.collapsed{width:var(--sidebar-collapsed);}
-.sidebar.collapsed .sb-label,.sidebar.collapsed .sb-brand-name,.sidebar.collapsed .sb-section-label,.sidebar.collapsed .sb-user-info{display:none;}
-.sidebar.collapsed .sb-item{justify-content:center;padding:12px 0;}
-.sidebar.collapsed .sb-item .sb-icon{margin:0;}
+.sidebar{
+  width:var(--sidebar-w);
+  min-width:var(--sidebar-w);
+  background:var(--sidebar-bg);
+  display:flex;
+  flex-direction:column;
+  position:fixed;
+  top:0;
+  left:0;
+  bottom:0;
+  z-index:300;
+  transition:width 0.22s cubic-bezier(.4,0,.2,1);
+  overflow-x:hidden;
+  border-right:1px solid rgba(255,255,255,0.06);
+}
+.sidebar.collapsed{
+  width:var(--sidebar-collapsed);
+  min-width:var(--sidebar-collapsed);
+}
+.sidebar.collapsed .sb-label,
+.sidebar.collapsed .sb-brand-name,
+.sidebar.collapsed .sb-section-label,
+.sidebar.collapsed .sb-user-info{
+  display:none;
+}
+.sidebar.collapsed .sb-item{
+  justify-content:flex-start;
+  padding:11px 0 11px 14px;
+}
+.sidebar.collapsed .sb-item .sb-icon{
+  margin:0;
+  width:24px;
+  text-align:left;
+}
+.sidebar.collapsed .sb-header{
+  padding:18px 0 10px 14px;
+}
+.sidebar.collapsed .sb-footer{
+  padding:10px 0 16px;
+}
+.sidebar.collapsed .sb-actions{
+  justify-content:flex-start;
+  padding:8px 0 0 8px;
+}
+.sidebar.collapsed .sb-action-btn.sb-hide-collapsed{
+  display:none;
+}
+.sidebar.collapsed .sb-action-btn#sb-toggle-btn{
+  flex:none;
+  width:36px;
+}
+.sidebar.collapsed .sb-user{
+  padding:8px 0 8px 9px;
+}
+/* Tooltip on hover when collapsed */
+.sidebar.collapsed .sb-item{
+  position:relative;
+}
+.sidebar.collapsed .sb-item:hover::after{
+  content:attr(data-tooltip);
+  position:absolute;
+  left:58px;
+  top:50%;
+  transform:translateY(-50%);
+  background:#1a1d2e;
+  color:var(--accent3);
+  border:1px solid var(--border);
+  border-radius:7px;
+  padding:5px 10px;
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+  z-index:500;
+  pointer-events:none;
+  box-shadow:0 4px 12px rgba(0,0,0,0.4);
+}
 
-.sb-header{padding:18px 14px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.07);}
+.sb-header{
+  padding:18px 14px 10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+}
 .sb-brand-icon{font-size:24px;flex-shrink:0;}
 .sb-brand-name{font-size:13px;font-weight:800;color:var(--accent3);line-height:1.3;white-space:nowrap;}
-.sb-nav{flex:1;overflow-y:auto;padding:8px 0;}
+.sb-nav{
+  flex:1;
+  overflow-y:auto;
+  padding:8px 0;
+}
 .sb-nav::-webkit-scrollbar{width:3px;}
 .sb-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);}
-.sb-section-label{font-size:9px;font-weight:700;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1.5px;padding:10px 18px 4px;}
-.sb-item{display:flex;align-items:center;gap:11px;padding:11px 14px;cursor:pointer;transition:all 0.15s;border:none;background:none;width:100%;text-align:left;color:rgba(255,255,255,0.55);font-size:13px;font-weight:600;font-family:'Outfit',sans-serif;white-space:nowrap;}
-.sb-item:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9);}
-.sb-item.active{background:rgba(245,166,35,0.15);color:var(--accent3);border-right:3px solid var(--accent3);}
-.sb-icon{font-size:18px;flex-shrink:0;width:24px;text-align:center;}
-.sb-label{white-space:nowrap;}
-.sb-footer{padding:10px 10px 16px;border-top:1px solid rgba(255,255,255,0.07);}
-.sb-user{display:flex;align-items:center;gap:9px;padding:8px;border-radius:10px;cursor:pointer;transition:background 0.15s;}
-.sb-user:hover{background:rgba(255,255,255,0.07);}
-.sb-user-avatar{width:34px;height:34px;border-radius:50%;background:var(--accent3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#000;flex-shrink:0;overflow:hidden;}
-.sb-user-info{flex:1;min-width:0;}
-.sb-user-name{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.sb-user-role{font-size:10px;color:rgba(255,255,255,0.4);text-transform:capitalize;}
-.sb-toggle{background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:5px 8px;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.5);transition:all 0.15s;display:flex;align-items:center;justify-content:center;}
-.sb-toggle:hover{border-color:var(--accent3);color:var(--accent3);}
-.sb-actions{display:flex;gap:6px;padding:8px 10px 0;}
-.sb-action-btn{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 4px;cursor:pointer;font-size:11px;color:rgba(255,255,255,0.55);transition:all 0.15s;text-align:center;white-space:nowrap;font-family:'Outfit',sans-serif;}
-.sb-action-btn:hover{border-color:var(--accent3);color:var(--accent3);}
+.sb-section-label{
+  font-size:9px;
+  font-weight:700;
+  color:rgba(255,255,255,0.3);
+  text-transform:uppercase;
+  letter-spacing:1.5px;
+  padding:10px 18px 4px;
+}
+.sb-item{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:11px 14px;
+  cursor:pointer;
+  transition:all 0.15s;
+  border:none;
+  background:none;
+  width:100%;
+  text-align:left;
+  color:rgba(255,255,255,0.55);
+  font-size:13px;
+  font-weight:600;
+  font-family:'Outfit',sans-serif;
+  white-space:nowrap;
+}
+.sb-item:hover{
+  background:rgba(255,255,255,0.07);
+  color:rgba(255,255,255,0.9);
+}
+.sb-item.active{
+  background:rgba(245,166,35,0.15);
+  color:var(--accent3);
+  border-right:3px solid var(--accent3);
+}
+.sb-icon{
+  font-size:18px;
+  flex-shrink:0;
+  width:24px;
+  text-align:center;
+}
+.sb-label{
+  white-space:nowrap;
+}
+.sb-footer{
+  padding:10px 10px 16px;
+  border-top:1px solid rgba(255,255,255,0.07);
+}
+.sb-user{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:8px;
+  border-radius:10px;
+  cursor:pointer;
+  transition:background 0.15s;
+}
+.sb-user:hover{
+  background:rgba(255,255,255,0.07);
+}
+.sb-user-avatar{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:var(--accent3);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:800;
+  color:#000;
+  flex-shrink:0;
+  overflow:hidden;
+}
+.sb-user-info{
+  flex:1;
+  min-width:0;
+}
+.sb-user-name{
+  font-size:12px;
+  font-weight:700;
+  color:#fff;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.sb-user-role{
+  font-size:10px;
+  color:rgba(255,255,255,0.4);
+  text-transform:capitalize;
+}
+.sb-toggle{
+  background:none;
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:8px;
+  padding:5px 8px;
+  cursor:pointer;
+  font-size:12px;
+  color:rgba(255,255,255,0.5);
+  transition:all 0.15s;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.sb-toggle:hover{
+  border-color:var(--accent3);
+  color:var(--accent3);
+}
+.sb-actions{
+  display:flex;
+  gap:6px;
+  padding:8px 10px 0;
+}
+.sb-action-btn{
+  flex:1;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;
+  padding:6px 4px;
+  cursor:pointer;
+  font-size:11px;
+  color:rgba(255,255,255,0.55);
+  transition:all 0.15s;
+  text-align:center;
+  white-space:nowrap;
+  font-family:'Outfit',sans-serif;
+}
+.sb-action-btn:hover{
+  border-color:var(--accent3);
+  color:var(--accent3);
+}
 
 /* ===== MAIN AREA ===== */
-.main-area{flex:1;margin-left:var(--sidebar-w);transition:margin-left 0.22s cubic-bezier(.4,0,.2,1);min-height:100vh;display:flex;flex-direction:column;}
-.main-area.sidebar-collapsed{margin-left:var(--sidebar-collapsed);}
+.main-area{
+  flex:1;
+  margin-left:var(--sidebar-w);
+  transition:margin-left 0.22s cubic-bezier(.4,0,.2,1);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  overflow-x:hidden;
+}
+.main-area.sidebar-collapsed{
+  margin-left:var(--sidebar-collapsed);
+}
 
 #backup-banner{background:linear-gradient(90deg,#8b0000,#c0392b);color:#fff;padding:10px 20px;display:none;align-items:center;justify-content:space-between;gap:12px;}
 #backup-banner p{font-size:13px;font-weight:600;}
@@ -238,7 +442,7 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
 .pib-price{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent3);font-weight:700;}
 .pib-stock{font-size:10px;color:var(--muted);margin-top:2px;}
 .pos-add-btn{position:absolute;bottom:6px;right:6px;width:26px;height:26px;border-radius:50%;background:var(--accent3);border:none;color:#000;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;opacity:0;transition:opacity 0.15s;}
-.pos-item-btn:hover .pos-add-btn{opacity:1;}
+.pos-item-btn:hover .pos-add-btn{opacity:1;display:none;}
 
 /* ===== CART ===== */
 .cart-row{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--border);}
@@ -381,7 +585,7 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
   #ai-chat-window{bottom:136px;right:12px;width:calc(100vw - 24px);}
   #toast-container{top:auto;bottom:80px;right:12px;left:12px;}
   .toast{min-width:0;}
-  .pos-add-btn{opacity:1;}
+  .pos-item-btn:hover .pos-add-btn{display:none;}
 }
 
 @media print{
@@ -421,24 +625,24 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
     </div>
     <div class="sb-nav">
       <div class="sb-section-label" id="sbl-sales">Sales</div>
-      <button class="sb-item active" id="tab-pos" onclick="showPage('pos',this)"><span class="sb-icon">🛒</span><span class="sb-label" data-en="POS" data-ha="Siyarwa">POS</span></button>
-      <button class="sb-item" id="tab-receipts" onclick="showPage('receipts',this)"><span class="sb-icon">🧾</span><span class="sb-label" data-en="Receipts" data-ha="Takardar Siyarwa">Receipts</span></button>
+      <button class="sb-item active" id="tab-pos" data-tooltip="POS" onclick="showPage('pos',this)"><span class="sb-icon">🛒</span><span class="sb-label" data-en="POS" data-ha="Siyarwa">POS</span></button>
+      <button class="sb-item" id="tab-receipts" data-tooltip="Receipts" onclick="showPage('receipts',this)"><span class="sb-icon">🧾</span><span class="sb-label" data-en="Receipts" data-ha="Takardar Siyarwa">Receipts</span></button>
       <div class="sb-section-label" id="sbl-stock">Stock</div>
-      <button class="sb-item" id="tab-inventory" onclick="showPage('inventory',this)"><span class="sb-icon">📦</span><span class="sb-label" data-en="Inventory" data-ha="Kayan Siyarwa">Inventory</span></button>
-      <button class="sb-item" id="tab-storerooms" onclick="showPage('storerooms',this)"><span class="sb-icon">🏠</span><span class="sb-label" data-en="Storerooms" data-ha="Rumfuna">Storerooms</span></button>
+      <button class="sb-item" id="tab-inventory" data-tooltip="Inventory" onclick="showPage('inventory',this)"><span class="sb-icon">📦</span><span class="sb-label" data-en="Inventory" data-ha="Kayan Siyarwa">Inventory</span></button>
+      <button class="sb-item" id="tab-storerooms" data-tooltip="Storerooms" onclick="showPage('storerooms',this)"><span class="sb-icon">🏠</span><span class="sb-label" data-en="Storerooms" data-ha="Rumfuna">Storerooms</span></button>
       <div class="sb-section-label" id="sbl-people">People</div>
-      <button class="sb-item" id="tab-customers" onclick="showPage('customers',this)"><span class="sb-icon">👥</span><span class="sb-label" data-en="Customers" data-ha="Abokan Ciniki">Customers</span></button>
-      <button class="sb-item" id="tab-suppliers" onclick="showPage('suppliers',this)"><span class="sb-icon">🤝</span><span class="sb-label" data-en="Suppliers" data-ha="Masu Kaya">Suppliers</span></button>
+      <button class="sb-item" id="tab-customers" data-tooltip="Customers" onclick="showPage('customers',this)"><span class="sb-icon">👥</span><span class="sb-label" data-en="Customers" data-ha="Abokan Ciniki">Customers</span></button>
+      <button class="sb-item" id="tab-suppliers" data-tooltip="Suppliers" onclick="showPage('suppliers',this)"><span class="sb-icon">🤝</span><span class="sb-label" data-en="Suppliers" data-ha="Masu Kaya">Suppliers</span></button>
       <div class="sb-section-label" id="sbl-finance">Finance</div>
-      <button class="sb-item" id="tab-reports" onclick="showPage('reports',this)"><span class="sb-icon">📊</span><span class="sb-label" data-en="Reports" data-ha="Rahotanni">Reports</span></button>
-      <button class="sb-item admin-only" id="tab-expenses" onclick="showPage('expenses',this)"><span class="sb-icon">💰</span><span class="sb-label" data-en="Expenses" data-ha="Kashe-Kashe">Expenses</span></button>
-      <button class="sb-item admin-only" id="tab-settings" onclick="showPage('settings',this)"><span class="sb-icon">⚙️</span><span class="sb-label" data-en="Settings" data-ha="Saituna">Settings</span></button>
+      <button class="sb-item" id="tab-reports" data-tooltip="Reports" onclick="showPage('reports',this)"><span class="sb-icon">📊</span><span class="sb-label" data-en="Reports" data-ha="Rahotanni">Reports</span></button>
+      <button class="sb-item admin-only" id="tab-expenses" data-tooltip="Expenses" onclick="showPage('expenses',this)"><span class="sb-icon">💰</span><span class="sb-label" data-en="Expenses" data-ha="Kashe-Kashe">Expenses</span></button>
+      <button class="sb-item admin-only" id="tab-settings" data-tooltip="Settings" onclick="showPage('settings',this)"><span class="sb-icon">⚙️</span><span class="sb-label" data-en="Settings" data-ha="Saituna">Settings</span></button>
     </div>
     <div class="sb-footer">
       <div class="sb-actions">
-        <button class="sb-action-btn" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle theme">☀️</button>
-        <button class="sb-action-btn" onclick="toggleLang()" id="lang-toggle-btn" title="Switch language">EN</button>
-        <button class="sb-action-btn" onclick="toggleSidebar()" id="sb-toggle-btn" title="Collapse sidebar">◀</button>
+        <button class="sb-action-btn sb-hide-collapsed" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle theme">☀️</button>
+        <button class="sb-action-btn sb-hide-collapsed" onclick="toggleLang()" id="lang-toggle-btn" title="Switch language">EN</button>
+        <button class="sb-action-btn" onclick="toggleSidebar()" id="sb-toggle-btn" title="Toggle sidebar" style="font-size:16px;letter-spacing:-1px">☰</button>
       </div>
       <div class="sb-user mt8" onclick="openProfilePopup()">
         <div class="sb-user-avatar" id="sb-avatar"><span id="sb-avatar-inner">?</span></div>
@@ -516,7 +720,7 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
       <div>
         <div class="section-title">🛒 Make a Sale</div>
         <input class="search-bar mb12" id="pos-search" placeholder="🔍 Search item..." oninput="renderPosItems()" style="width:100%"/>
-        <div id="pos-items-grid" style="max-height:500px;overflow-y:auto;padding:2px"></div>
+        <div id="pos-items-grid" style="padding:2px"></div>
       </div>
       <div class="card" style="position:sticky;top:66px">
         <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:10px">Cart</div>
@@ -1662,6 +1866,12 @@ function load(){
 
 function restoreSession(){
   try{
+    // If sessionStorage flag is missing, the browser session is new (tab/browser was closed).
+    // Clear the localStorage session so the user must log in again.
+    if(!sessionStorage.getItem('shopdb_active')){
+      localStorage.removeItem('shopdb_session');
+      return false;
+    }
     // DB loaded by initDB() on startup
     const s=localStorage.getItem('shopdb_session');
     if(!s)return false;
@@ -1754,6 +1964,8 @@ function doLogin(){
   if(staff.role==='wages_only'){g('login-err').style.display='block';g('login-err').textContent='This account cannot log in.';return;}
   currentUser=staff;
   localStorage.setItem('shopdb_session',JSON.stringify({id:staff.id,ts:Date.now()}));
+  // Mark this as an active browser session (cleared when tab/browser closes)
+  sessionStorage.setItem('shopdb_active','1');
   g('login-screen').style.display='none';
   g('app').style.display='flex';g('app').classList.add('visible');
   updateNavAvatar();applyRole();checkBackup();renderPosItems();setMonth();genReports();updateBalanceCards();
@@ -1762,6 +1974,7 @@ function doLogin(){
 function doLogout(){
   currentUser=null;cart=[];
   localStorage.removeItem('shopdb_session');
+  sessionStorage.removeItem('shopdb_active');
   closeProfilePopup();
   g('app').style.display='none';g('app').classList.remove('visible');
   g('login-screen').style.display='flex';
@@ -1774,7 +1987,10 @@ window.addEventListener('DOMContentLoaded',async()=>{
   loadTheme();
   handleOAuthRedirect();
   await initDB();
+  initSidebarState();
   if(restoreSession()){
+    // Session is still valid — refresh the sessionStorage flag (handles F5 / Ctrl+R refresh)
+    sessionStorage.setItem('shopdb_active','1');
     g('login-screen').style.display='none';
     g('app').style.display='flex';g('app').classList.add('visible');
     updateNavAvatar();applyRole();checkBackup();renderPosItems();setMonth();genReports();updateBalanceCards();
@@ -1896,11 +2112,26 @@ function showPage(p,el){
 
 // ===== SIDEBAR / TOAST / LANG =====
 function toggleSidebar(){
-  const sb=g('sidebar'),ma=g('main-area'),btn=g('sb-toggle-btn');
+  const sb=g('sidebar'),ma=g('main-area');
   const isCollapsed=sb.classList.toggle('collapsed');
   ma.classList.toggle('sidebar-collapsed',isCollapsed);
-  if(btn)btn.textContent=isCollapsed?'▶':'◀';
+  // Update profile popup left position to follow sidebar width
+  const pp=g('profile-popup');
+  if(pp)pp.style.left=isCollapsed?'calc(var(--sidebar-collapsed) + 8px)':'calc(var(--sidebar-w) + 8px)';
   try{localStorage.setItem('sb_collapsed',isCollapsed?'1':'0');}catch(e){}
+}
+
+function initSidebarState(){
+  try{
+    const collapsed=localStorage.getItem('sb_collapsed')==='1';
+    if(collapsed){
+      const sb=g('sidebar'),ma=g('main-area');
+      if(sb)sb.classList.add('collapsed');
+      if(ma)ma.classList.add('sidebar-collapsed');
+      const pp=g('profile-popup');
+      if(pp)pp.style.left='calc(var(--sidebar-collapsed) + 8px)';
+    }
+  }catch(e){}
 }
 
 function toast(msg,type,dur){
@@ -2541,7 +2772,6 @@ function renderPosItems(){
       <div class="pib-name">${x.name}</div>
       <div class="pib-price">${displayPrice}</div>
       <div class="pib-stock">${outOfStock?'<span style="color:var(--accent)">Out of stock</span>':stockStr}${hasMulti?` · ${units.length} units`:''}</div>
-      ${!outOfStock?`<button class="pos-add-btn" onclick="event.stopPropagation();${clickFn}" title="Add to cart">+</button>`:''}
     </div>`;
   }).join('');
 }
@@ -3463,8 +3693,6 @@ function toggleTheme(){
 }
 function loadTheme(){
   try{const t=localStorage.getItem('shopTheme');if(t==='light'){document.body.classList.add('light-mode');const btn=g('theme-toggle-btn');if(btn)btn.textContent='🌙';}}catch(e){}
-  // Restore sidebar collapsed state
-  try{if(localStorage.getItem('sb_collapsed')==='1'){const sb=g('sidebar');const ma=g('main-area');const btn=g('sb-toggle-btn');if(sb)sb.classList.add('collapsed');if(ma)ma.classList.add('sidebar-collapsed');if(btn)btn.textContent='▶';}}catch(e){}
 }
 loadTheme();
 
