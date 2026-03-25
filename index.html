@@ -21,7 +21,7 @@ body.light-mode{
   --bg:#f4f6fb;--surface:#ffffff;--surface2:#eef1f8;--border:#dde3f0;
   --text:#1a1d2e;--muted:#6b7280;--shadow:0 4px 24px rgba(0,0,0,0.08);
   --input-bg:#f8f9fc;--input-border:#d1d8e8;--input-focus:#fff;
-  --sidebar-bg:#1a1d2e;--hover-row:rgba(0,0,0,0.025);
+  --sidebar-bg:#ffffff;--hover-row:rgba(0,0,0,0.025);
 }
 body.light-mode input,body.light-mode select,body.light-mode textarea{background:var(--input-bg);border-color:var(--input-border);color:var(--text);}
 body.light-mode input:focus,body.light-mode select:focus,body.light-mode textarea:focus{background:var(--input-focus);border-color:var(--accent3);}
@@ -87,14 +87,27 @@ body.light-mode [style*="color:#4ddb9a"]{color:#0f9b58!important;}
 body.light-mode [style*="color:#ff6b8a"]{color:#e94560!important;}
 body.light-mode [style*="color:var(--muted)"]{color:#6b7280!important;}
 body.light-mode .sidebar{background:var(--sidebar-bg);}
-body.light-mode .sb-item{color:rgba(255,255,255,0.6);}
-body.light-mode .sb-item:hover{background:rgba(255,255,255,0.1);color:#fff;}
+body.light-mode .sb-item{color:rgba(0,0,0,0.65);}
+body.light-mode .sb-item:hover{background:rgba(0,0,0,0.05);color:#000;}
 body.light-mode .sb-item.active{background:rgba(245,166,35,0.2);color:var(--accent3);}
 body.light-mode .sb-brand-name{color:#fff;}
 body.light-mode .sb-section-label{color:rgba(255,255,255,0.35);}
 body.light-mode .unit-sel-btn{background:#fff;border-color:#e5e7eb;}
 body.light-mode .unit-row{background:rgba(0,0,0,0.03);}
 body.light-mode .ai-msg-bot{background:#f0f2f5;color:#1a1d2e;}
+body.light-mode .sb-action-btn{
+  background:rgba(0,0,0,0.05);
+  border-color:rgba(0,0,0,0.1);
+  color:rgba(0,0,0,0.65);
+}
+body.light-mode .sb-action-btn:hover{
+  border-color:var(--accent3);
+  color:var(--accent3);
+}
+body.light-mode .sb-user-avatar{
+  background:var(--accent3);
+  color:#000;
+}
 
 /* ===== GLOBAL ===== */
 .sort-th{cursor:pointer;user-select:none;white-space:nowrap;}
@@ -155,11 +168,27 @@ body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;min-
   padding:10px 0 16px;
 }
 .sidebar.collapsed .sb-actions{
-  justify-content:flex-start;
-  padding:8px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0 0 12px;
+}
+.sidebar.collapsed .sb-action-btn#theme-toggle-btn {
+  order: 1;
+}
+.sidebar.collapsed .sb-action-btn#lang-toggle-btn {
+  order: 2;
+}
+.sidebar.collapsed .sb-action-btn#sb-toggle-btn {
+  order: 3;
 }
 .sidebar.collapsed .sb-action-btn.sb-hide-collapsed{
   display:none;
+}
+.sidebar.collapsed .sb-action-btn#theme-toggle-btn,
+.sidebar.collapsed .sb-action-btn#lang-toggle-btn {
+  display: inline-flex;
 }
 .sidebar.collapsed .sb-action-btn#sb-toggle-btn{
   flex:none;
@@ -343,11 +372,9 @@ body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;min-
   flex:1;
   margin-left:var(--sidebar-w);
   transition:margin-left 0.22s cubic-bezier(.4,0,.2,1);
-  min-height:100vh;
   display:flex;
   flex-direction:column;
   min-width:0;
-  overflow-x:hidden;
 }
 .main-area.sidebar-collapsed{
   margin-left:var(--sidebar-collapsed);
@@ -432,7 +459,7 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
 .stat-sub{font-size:11px;color:var(--muted);margin-top:3px;}
 
 /* ===== POS ===== */
-#pos-items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
+#pos-items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;max-height:calc(100vh - 90px);overflow-y:auto;padding-right:4px;}
 .pos-item-btn{background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:12px 8px;cursor:pointer;text-align:center;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;position:relative;}
 .pos-item-btn:hover{border-color:var(--accent3);background:rgba(245,166,35,0.08);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2);}
 .pos-item-btn.out-of-stock{opacity:0.35;cursor:not-allowed;}
@@ -444,6 +471,10 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
 .pos-add-btn{position:absolute;bottom:6px;right:6px;width:26px;height:26px;border-radius:50%;background:var(--accent3);border:none;color:#000;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;opacity:0;transition:opacity 0.15s;}
 .pos-item-btn:hover .pos-add-btn{opacity:1;display:none;}
 
+/* Hide POS title when scrolling */
+.pos-title-hidden {
+  display: none;
+}
 /* ===== CART ===== */
 .cart-row{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--border);}
 .cart-row:last-child{border-bottom:none;}
@@ -595,6 +626,32 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
 }
 #print-area{display:none;}
 
+/* Fix 1 – Body never scrolls; main-area handles all scrolling */
+body {
+  overflow: hidden;
+}
+.main-area {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+
+/* Fix 3 – Stack collapsed sidebar buttons vertically */
+.sidebar.collapsed .sb-action-btn {
+  width: auto;
+  min-width: 32px;
+  padding: 6px 10px;
+}
+.sidebar.collapsed .sb-action-btn#sb-toggle-btn {
+  order: 3;
+}
+.sidebar.collapsed .sb-action-btn#theme-toggle-btn {
+  order: 1;
+}
+.sidebar.collapsed .sb-action-btn#lang-toggle-btn {
+  order: 2;
+}
 
 </style>
 </head>
@@ -718,9 +775,9 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
   <div id="page-pos" class="page active">
     <div style="display:grid;grid-template-columns:1fr 360px;gap:14px;align-items:start">
       <div>
-        <div class="section-title">🛒 Make a Sale</div>
+        <div class="section-title" id="pos-title">🛒 Make a Sale</div>
         <input class="search-bar mb12" id="pos-search" placeholder="🔍 Search item..." oninput="renderPosItems()" style="width:100%"/>
-        <div id="pos-items-grid" style="padding:2px"></div>
+        <div id="pos-items-grid" style="padding:2px 4px 2px 2px"></div>
       </div>
       <div class="card" style="position:sticky;top:66px">
         <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:10px">Cart</div>
@@ -1648,7 +1705,7 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
     <div id="sup-pay-rec-preview"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-sup-pay-receipt')">Close</button>
-      <button class="btn btn-success" onclick="window.print()">🖨️ Print</button>
+      <button class="btn btn-success" onclick="openPrintWindow(document.getElementById('sup-pay-rec-preview').innerHTML)">🖨️ Print</button>
     </div>
   </div>
 </div>
@@ -2095,11 +2152,44 @@ function applyRole(){
   if(r==='cashier'){['tab-inventory','tab-storerooms','tab-customers','tab-suppliers','tab-reports','tab-settings'].forEach(id=>{const t=g(id);if(t)t.style.display='none';});}
   if(r==='storekeeper'){['tab-pos','tab-customers','tab-suppliers','tab-receipts','tab-reports','tab-settings'].forEach(id=>{const t=g(id);if(t)t.style.display='none';});showPage('storerooms',g('tab-storerooms'));}
 }
+let posGridScrollListener = null;
+
+function initPosScrollEffect() {
+  const grid = document.getElementById('pos-items-grid');
+  const title = document.getElementById('pos-title');
+  if (!grid || !title) return;
+  if (posGridScrollListener) {
+    grid.removeEventListener('scroll', posGridScrollListener);
+  }
+  const handleScroll = () => {
+    if (grid.scrollTop > 10) {
+      title.classList.add('pos-title-hidden');
+    } else {
+      title.classList.remove('pos-title-hidden');
+    }
+  };
+  grid.addEventListener('scroll', handleScroll);
+  posGridScrollListener = handleScroll;
+  handleScroll(); // initial check
+}
+
 function showPage(p,el){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   g('page-'+p).classList.add('active');if(el)el.classList.add('active');
-  // On mobile, close sidebar after navigation
+  
+  // Clean up scroll listener from previous page
+  if (posGridScrollListener) {
+    const grid = document.getElementById('pos-items-grid');
+    if (grid) grid.removeEventListener('scroll', posGridScrollListener);
+    posGridScrollListener = null;
+  }
+  // Activate scroll effect only for POS page
+  if (p === 'pos') {
+    initPosScrollEffect();
+  }
+  
+  // Existing page handlers
   ({pos:()=>{renderPosItems();renderCart();},
     inventory:()=>{renderInventory();renderInvStats();renderExpiryAlerts();},
     storerooms:()=>{renderRoomCards();renderAllLog();},
@@ -2567,6 +2657,22 @@ function printHeaderHtml(leftContent,title){
     +'<div style="font-size:12px;color:#333;margin-bottom:10px">'+leftContent+'</div>';
 }
 
+// ===== UNIVERSAL PRINT HELPER =====
+// Opens a clean new window — bypasses all page CSS (overflow:hidden etc.)
+function openPrintWindow(html){
+  const w=window.open('','_blank','width=900,height=700');
+  if(!w){alert('Please allow popups to print.');return;}
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"/>'
+    +'<style>*{box-sizing:border-box;}body{margin:0;padding:0;background:#fff;color:#000;}'
+    +'table{border-collapse:collapse;}@page{margin:1cm;}'
+    +'@media print{body{margin:0;}}</style></head><body>'
+    +html+'</body></html>');
+  w.document.close();
+  w.onload=function(){w.focus();w.print();setTimeout(function(){w.close();},1000);};
+  // Fallback if onload doesn't fire
+  setTimeout(function(){if(!w.closed){w.focus();w.print();}},600);
+}
+
 function getUnits(item){return item.units&&item.units.length?item.units:[{id:'base',name:item.unit||'piece',qtyInParent:1,sellPrice:item.price,isBase:true}];}
 
 // Convert qty in smallest unit to display string e.g. "2 Cartons + 3 Rolls + 5 Pieces"
@@ -2864,7 +2970,7 @@ function completeSale(){
     if(!existingCust){alert('Payment incomplete! Short by ₦'+fmt(total-paid)+'\n\nOnly existing customers can have unpaid balance.');return;}
     if(!confirm(`Payment short by ₦${fmt(total-paid)}.\n\nRecord as debt for ${existingCust.name}?`))return;
   }
-  const receipt={id:'RCP-'+(localStorage.getItem('shopdb_device_prefix')||'')+String(DB.receiptCounter).padStart(4,'0'),date:new Date().toLocaleString(),
+  const receipt={id:'RCP-'+(localStorage.getItem('shopdb_device_prefix')||'')+String(DB.receiptCounter).padStart(4,'0'),date:new Date().toISOString(),
     customer:cname||'Anonymous',orderType:ctype,cashier:currentUser.name,
     items:JSON.parse(JSON.stringify(cart)),subtotal:sub,totalDiscount:discs,orderDiscount:orderDiscAmt,total,
     payments:{cash,transfer:xfer,pos},totalPaid:paid,change:Math.max(0,paid-total),debt:paid<total?total-paid:0};
@@ -2910,7 +3016,7 @@ function showReceiptModal(r){
   <div class="rp-div"></div><div class="rp-sub">Thank you for shopping with us!</div></div>`;
   openModal('modal-receipt');
 }
-function printRec(){g('print-area').innerHTML=`<div style="font-family:monospace;padding:20px">${g('rpt').innerHTML}</div>`;window.print();}
+function printRec(){openPrintWindow('<div style="font-family:monospace;padding:20px">'+g('rpt').innerHTML+'</div>');}
 function exportRecCSV(){
   if(!currentReceiptData)return;const r=currentReceiptData;
   let csv=`Receipt,${r.id}\nDate,${r.date}\nCustomer,${r.customer}\nOrder Type,${r.orderType||''}\nCashier,${r.cashier}\n\nItem,Qty,Unit Price,Discount,Total\n`;
@@ -3639,10 +3745,10 @@ function printSupStatement(){
   const finalBalColor=owed>0?'#c0392b':owed<0?'#27ae60':'#333';
   const finalBalText=owed>0?'₦'+fmt(owed):owed<0?'−₦'+fmt(Math.abs(owed)):'₦0.00 (Settled)';
   const leftInfo=`<strong>${s.name}</strong><br/>Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'} · Acct Name: ${s.accname||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''}`;
-  g('print-area').innerHTML=printHeaderHtml(leftInfo,'Supplier Statement')
+  const html=printHeaderHtml(leftInfo,'Supplier Statement')
     +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:7px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:7px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Debt (+)</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Payment (-)</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>')+'</tbody></table>'
     +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${finalBalColor}">Final Balance: ${finalBalText}${owed<0?' (Supplier owes YOU)':owed>0?' (You owe supplier)':''}</div></div>`;
-  closeModal('modal-sup-statement');window.print();
+  closeModal('modal-sup-statement');openPrintWindow(html);
 }
 // =================== CUSTOMER DEBT ===================
 function openDebtPayment(custId){
@@ -3680,10 +3786,10 @@ function printCustStatement(){
   const custFinalColor=balance>0?'#27ae60':balance<0?'#c0392b':'#333';
   const custFinalText=balance>0?'₦'+fmt(balance):balance<0?'−₦'+fmt(Math.abs(balance)):'₦0.00 (Settled)';
   const leftInfo=`<strong>${c.name}</strong><br/>Phone: ${c.phone||'—'} · Address: ${c.address||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''}`;
-  g('print-area').innerHTML=printHeaderHtml(leftInfo,'Customer Statement')
+  const custHtml=printHeaderHtml(leftInfo,'Customer Statement')
     +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:7px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:7px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Amount</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Debt</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>')+'</tbody></table>'
     +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${custFinalColor}">Final Balance: ${custFinalText}${balance>0?' (Customer owes YOU)':balance<0?' (You owe customer)':''}</div></div>`;
-  closeModal('modal-cust-statement');window.print();
+  closeModal('modal-cust-statement');openPrintWindow(custHtml);
 }
 // =================== THEME ===================
 function toggleTheme(){
@@ -3967,11 +4073,11 @@ function printExpSupStatement(){
   const expFinalColor=expSupOwed>0?'#c0392b':expSupOwed<0?'#27ae60':'#333';
   const expFinalText=expSupOwed>0?'₦'+fmt(expSupOwed):expSupOwed<0?'−₦'+fmt(Math.abs(expSupOwed)):'₦0.00 (Settled)';
   const leftInfo=`<strong>${s.name}</strong><br/>Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'}`;
-  g('print-area').innerHTML=printHeaderHtml(leftInfo,'Expense Supplier Statement')
+  const expHtml=printHeaderHtml(leftInfo,'Expense Supplier Statement')
     +'<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:6px;border:1px solid #ccc">Date</th><th style="padding:6px;border:1px solid #ccc">Description</th><th style="padding:6px;border:1px solid #ccc">Debit</th><th style="padding:6px;border:1px solid #ccc">Credit</th><th style="padding:6px;border:1px solid #ccc">Balance</th></tr></thead>'
     +'<tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:12px">No transactions</td></tr>')+'</tbody></table>'
     +`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${expFinalColor}">Final Balance: ${expFinalText}${expSupOwed<0?' (Supplier owes YOU)':expSupOwed>0?' (You owe supplier)':''}</div></div>`;
-  window.print();
+  openPrintWindow(expHtml);
 }
 // =================== GENERAL EXPENSES ===================
 const EXP_CATS={shop_supplies:'🛍️ Shop Supplies',capital:'🪑 Capital Expense',wages:'👤 Staff Wages',adashi:'💰 Adashi',other:'📌 Other'};
@@ -4405,18 +4511,24 @@ function saveEditCust(){const id=v('ec-id'),c=DB.customers.find(x=>x.id===id);if
 function clearRecFilters(){['rec-search','rec-date'].forEach(id=>sv(id,''));sv('rec-type','');renderRec();}
 function renderRec(){
   const srch=(g('rec-search')?.value||'').toLowerCase(),type=g('rec-type').value,dateVal=g('rec-date').value;
+  function sameDay(dateStr,filterVal){
+    if(!filterVal)return true;
+    const rd=new Date(dateStr);const fd=new Date(filterVal);
+    if(isNaN(rd))return true;// don't drop records with unparseable dates
+    return rd.getFullYear()===fd.getFullYear()&&rd.getMonth()===fd.getMonth()&&rd.getDate()===fd.getDate();
+  }
   // Combine sale receipts and supplier payment receipts
   let recs=[...DB.receipts].reverse().filter(r=>{
     if(type&&type!=='supplier'&&(r.orderType||'walk-in')!==type)return false;
     if(type==='supplier')return false;// exclude normal when filtering supplier
-    if(dateVal){const rd=new Date(r.date);const fd=new Date(dateVal);if(isNaN(rd)||rd.getFullYear()!==fd.getFullYear()||rd.getMonth()!==fd.getMonth()||rd.getDate()!==fd.getDate())return false;}
+    if(dateVal&&!sameDay(r.date,dateVal))return false;
     if(srch){const matchCust=r.customer.toLowerCase().includes(srch);const matchItem=r.items.some(x=>x.name.toLowerCase().includes(srch));const matchAmt=fmt(r.total).includes(srch)||String(r.total).includes(srch);if(!matchCust&&!matchItem&&!matchAmt)return false;}
     return true;
   }).map(r=>({...r,_type:'sale'}));
   // Add supplier payment receipts
   if(!type||type==='supplier'||type==='all'){
     const supRecs=[...(DB.supPayReceipts||[])].filter(r=>{
-      if(dateVal){const rd=new Date(r.date);const fd=new Date(dateVal);if(isNaN(rd)||rd.getFullYear()!==fd.getFullYear()||rd.getMonth()!==fd.getMonth()||rd.getDate()!==fd.getDate())return false;}
+      if(dateVal&&!sameDay(r.date,dateVal))return false;
       if(srch&&!r.supplierName?.toLowerCase().includes(srch)&&!r.payDesc?.toLowerCase().includes(srch))return false;
       return true;
     }).map(r=>({...r,_type:'supplier_payment'}));
@@ -4542,7 +4654,7 @@ function printCashFlowStatement(){
   const ss=DB.shopSettings||{};
   const phones=[ss.phone1,ss.phone2,ss.phone3].filter(Boolean).join(' · ');
   const periodStr=(from||'Beginning')+' → '+(to||'Today');
-  g('print-area').innerHTML=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
+  const cfHtml=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
       <div>
         <h2 style="font-size:16px;margin:0 0 3px">${ss.name||'Ado Salisu Sarki Mai Charbi'}</h2>
@@ -4584,16 +4696,16 @@ function printCashFlowStatement(){
     </table>
     <div style="margin-top:8px;font-size:10px;color:#aaa;text-align:center">${events.length} transactions · ${periodStr}</div>
   </div>`;
-  closeModal('modal-cashflow');window.print();
+  closeModal('modal-cashflow');openPrintWindow(cfHtml);
 }
 function printReports(){
-  g('print-area').innerHTML=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
+  const repHtml=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
     <h2>${DB.shopSettings?.name||'Ado Salisu Sarki Mai Charbi'}</h2>
     <p style="font-size:12px;color:#555">Report Period: ${g('rep-from')?.value||'—'} to ${g('rep-to')?.value||'—'} · Printed: ${new Date().toLocaleString()}</p>
     <hr style="margin:8px 0"/>
     ${g('rep-content')?.innerHTML||''}
   </div>`;
-  window.print();
+  openPrintWindow(repHtml);
 }
 function toggleRepBreakdown(type){
   const panel=g('rep-breakdown-panel');
