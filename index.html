@@ -620,15 +620,16 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
 }
 
 @media print{
+  body{overflow:visible!important;height:auto!important;display:block!important;}
   body>*:not(#print-area){display:none!important;}
-  #print-area{display:block!important;}
+  #print-area{display:block!important;overflow:visible!important;position:static!important;}
   @page{margin:1cm;}
 }
 #print-area{display:none;}
 
-/* Fix 1 – Body never scrolls; main-area handles all scrolling */
-body {
-  overflow: hidden;
+/* Fix 1 – Body never scrolls on screen; main-area handles all scrolling */
+@media screen {
+  body { overflow: hidden; }
 }
 .main-area {
   height: 100vh;
@@ -956,6 +957,7 @@ body {
         <div class="flex gap8 flex-wrap mt12">
           <button class="btn btn-gold btn-sm" onclick="openModal('modal-sup-delivery')">📦 Record Delivery</button>
           <button class="btn btn-success btn-sm" onclick="openSupPaymentModal()">💳 Record Payment</button>
+          <button class="btn btn-ghost btn-sm" onclick="openAddItemFromSupplier()">➕ Add Item</button>
           <button class="btn btn-ghost btn-sm" onclick="g('bulk-upload-sup').click()" title="Upload Template 3 stock file">📂 Upload Stock</button>
           <input type="file" id="bulk-upload-sup" accept=".xlsx,.xls,.csv" style="display:none" onchange="bulkUploadSupplierStock(this)"/>
           <button class="btn btn-ghost btn-sm" onclick="openSupStatementModal()">🖨️ Statement</button>
@@ -1223,8 +1225,8 @@ body {
 
     <!-- New item fields -->
     <div id="fi-new-fields" style="display:none">
-      <div class="img-upload" onclick="g('img-input').click()">
-        <div id="img-preview"><div style="font-size:30px">📷</div><p>Click to add photo</p></div>
+      <div class="img-upload" id="fi-img-upload-area" onclick="g('img-input').click()">
+        <div id="img-preview"><div style="font-size:30px">📷</div><p>Click or drag image here</p></div>
         <input type="file" id="img-input" accept="image/*" style="display:none" onchange="prevImg(this,'img-preview','fi-img')"/>
         <input type="hidden" id="fi-img"/>
       </div>
@@ -1246,13 +1248,22 @@ body {
           <div style="font-size:12px;font-weight:700;color:var(--text)">📐 Unit Hierarchy</div>
           <button class="btn btn-ghost btn-sm" onclick="addNewItemUnitRow()">+ Add Unit</button>
         </div>
-        <div class="alert alert-info mb8" style="font-size:10px">Largest → Smallest. Cost price is for the largest unit — sub-units auto-calculate.</div>
+        <div class="alert alert-info mb8" style="font-size:10px">Largest → Smallest. Cost & sell price of largest unit auto-calculate sub-units.</div>
         <div id="fi-unit-rows"></div>
         <!-- Initial quantity inputs per unit -->
         <div id="fi-init-qty-section" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
           <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Initial Stock</div>
           <div id="fi-init-qty-inputs"></div>
         </div>
+      </div>
+
+      <!-- Multi-Destination Distribution -->
+      <div style="border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:11px">
+        <div class="flex items-center justify-between mb8">
+          <div style="font-size:12px;font-weight:700;color:var(--text)">📍 Destination</div>
+          <button class="btn btn-ghost btn-sm" onclick="addFiDestRow()">+ Add Destination</button>
+        </div>
+        <div id="fi-dest-rows"></div>
       </div>
     </div>
 
@@ -1616,12 +1627,20 @@ body {
 
 <!-- Send To Modal -->
 <div class="modal-overlay" id="modal-send-to">
-  <div class="modal" style="max-width:380px">
+  <div class="modal" style="max-width:400px">
     <div class="modal-title" id="send-to-title">Send To</div>
     <input type="hidden" id="send-item-id"/>
     <input type="hidden" id="send-from"/>
     <div class="form-row"><label>Destination</label><select id="send-dest"></select></div>
-    <div class="form-row"><label>Quantity</label><input type="number" id="send-qty" placeholder="Enter quantity" min="1"/></div>
+    <!-- Unit breakdown qty (shown when item has units) -->
+    <div id="send-unit-rows" style="display:none">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Quantity by Unit</div>
+      <div id="send-unit-inputs"></div>
+    </div>
+    <!-- Simple qty (shown for single-unit items) -->
+    <div id="send-simple-row">
+      <div class="form-row"><label>Quantity</label><input type="number" id="send-qty" placeholder="Enter quantity" min="1"/></div>
+    </div>
     <div id="send-info" class="text-sm text-muted mb12"></div>
     <div class="form-row"><label>Selling Price at Destination (₦)</label><input type="number" id="send-price"/></div>
     <div class="modal-actions">
@@ -1737,9 +1756,9 @@ body {
 
 <!-- Expense Supplier Purchase Modal -->
 <div class="modal-overlay" id="modal-exp-sup-purchase" onclick="handleOverlayClick(event,'modal-exp-sup-purchase')">
-  <div class="modal" style="max-width:540px">
+  <div class="modal" style="max-width:580px">
     <div class="modal-title">🛍️ Record Purchase</div>
-    <div class="alert alert-info mb12" style="font-size:11px">Add all items bought in this visit. Enter qty and unit price — line total is calculated automatically.</div>
+    <div class="alert alert-info mb12" style="font-size:11px">Add all items bought. For new items you can define unit hierarchy inline. Cost is for the largest unit.</div>
     <div id="exp-purch-items-list"></div>
     <button class="btn btn-ghost btn-sm mt8" onclick="addExpPurchItem()">+ Add Item</button>
     <div class="flex justify-between mt10" style="font-size:13px;font-weight:700;border-top:1px solid var(--border);padding-top:8px">
@@ -1923,17 +1942,15 @@ function load(){
 
 function restoreSession(){
   try{
-    // If sessionStorage flag is missing, the browser session is new (tab/browser was closed).
-    // Clear the localStorage session so the user must log in again.
+    // sessionStorage is cleared when the browser tab/window is closed or device locked.
+    // It survives page refreshes (F5 / reload). This is how we detect "fresh session".
     if(!sessionStorage.getItem('shopdb_active')){
       localStorage.removeItem('shopdb_session');
       return false;
     }
-    // DB loaded by initDB() on startup
     const s=localStorage.getItem('shopdb_session');
     if(!s)return false;
     const sess=JSON.parse(s);
-    // Session valid for 12 hours
     if(Date.now()-sess.ts>12*60*60*1000){localStorage.removeItem('shopdb_session');return false;}
     const staff=DB.staff.find(x=>x.id===sess.id);
     if(!staff||staff.role==='wages_only')return false;
@@ -2291,7 +2308,7 @@ function openAddItemModal(dest){
   sv('fi-dest',destination);sv('fi-from-supplier','');sv('fi-selected-id','');
   sv('fi-item-search','');sv('fi-img','');sv('fi-low','');sv('fi-expiry','');
   const imgPrev=g('img-preview');
-  if(imgPrev)imgPrev.innerHTML='<div style="font-size:30px">📷</div><p>Click to add photo</p>';
+  if(imgPrev)imgPrev.innerHTML='<div style="font-size:30px">📷</div><p>Click or drag image here</p>';
   const newFields=g('fi-new-fields');if(newFields)newFields.style.display='none';
   const existQty=g('fi-existing-qty');if(existQty)existQty.style.display='none';
   const isRoom=destination!=='shop';
@@ -2301,8 +2318,18 @@ function openAddItemModal(dest){
   // Init unit rows with one default
   newItemUnits=[{id:ts(),name:'',qtyInParent:1,costPrice:0,sellPrice:0}];
   renderNewItemUnitRows();
+  // Init destination rows — default to the modal's dest
+  fiDestCount=0;
+  const destCont=g('fi-dest-rows');if(destCont)destCont.innerHTML='';
+  addFiDestRow();
+  // Pre-select the destination in the first row
+  setTimeout(()=>{
+    const firstSel=g('fidr-dest-1');
+    if(firstSel)firstSel.value=destination;
+    // Set up drag-drop for the image area
+    setupDragDrop(g('fi-img-upload-area'),'img-input','img-preview','fi-img');
+  },30);
   fillSupSelects();closeItemDrop();
-  // Reset item search input and dropdown
   const searchInput=g('fi-item-search');if(searchInput){searchInput.value='';searchInput.focus();}
   g('modal-add-item').classList.add('open');
 }
@@ -2319,7 +2346,7 @@ function renderNewItemUnitRows(){
       </div>
       <div><label>${isFirst?'—':'Per Parent'}</label>
         ${isFirst?'<input disabled placeholder="—" style="opacity:0.4"/>'
-          :`<input type="number" value="${u.qtyInParent||''}" oninput="newItemUnits[${i}].qtyInParent=parseFloat(this.value)||1;refreshInitQtyInputs();updateInitialStockCost()" placeholder="e.g. 8"/>`}
+          :`<input type="number" value="${u.qtyInParent||''}" oninput="newItemUnits[${i}].qtyInParent=parseFloat(this.value)||1;refreshInitQtyInputs();updateInitialStockCost();calcNewItemSubSellPrices(0)" placeholder="e.g. 8"/>`}
       </div>
       <div><label>${isFirst?'Cost ₦ (base)':'Cost ₦ (auto)'}</label>
         <input type="number" data-nicost="${i}" value="${u.costPrice||''}"
@@ -2327,7 +2354,10 @@ function renderNewItemUnitRows(){
           placeholder="${isFirst?'Enter':'auto'}" ${isFirst?'':'style="opacity:0.7"'} ${isFirst?'':'readonly'}/>
       </div>
       <div><label>Sell Price ₦</label>
-        <input type="number" value="${u.sellPrice||''}" oninput="newItemUnits[${i}].sellPrice=parseFloat(this.value)||0" placeholder="0"/>
+        <input type="number" data-nisell="${i}" value="${u.sellPrice||''}"
+          oninput="newItemUnits[${i}].sellPrice=parseFloat(this.value)||0;${isFirst?'calcNewItemSubSellPrices(0)':'calcNewItemSubSellPrices('+i+')'};this.dataset.manualOverride='1'"
+          onfocus="this.select()"
+          placeholder="0"/>
       </div>
       <button class="btn btn-danger btn-sm" onclick="newItemUnits.splice(${i},1);renderNewItemUnitRows()" ${newItemUnits.length<=1?'disabled':''}>×</button>`;
     cont.appendChild(row);
@@ -2657,20 +2687,17 @@ function printHeaderHtml(leftContent,title){
     +'<div style="font-size:12px;color:#333;margin-bottom:10px">'+leftContent+'</div>';
 }
 
-// ===== UNIVERSAL PRINT HELPER =====
-// Opens a clean new window — bypasses all page CSS (overflow:hidden etc.)
 function openPrintWindow(html){
   const w=window.open('','_blank','width=900,height=700');
   if(!w){alert('Please allow popups to print.');return;}
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"/>'
-    +'<style>*{box-sizing:border-box;}body{margin:0;padding:0;background:#fff;color:#000;}'
+    +'<style>*{box-sizing:border-box;}body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,sans-serif;}'
     +'table{border-collapse:collapse;}@page{margin:1cm;}'
     +'@media print{body{margin:0;}}</style></head><body>'
     +html+'</body></html>');
   w.document.close();
-  w.onload=function(){w.focus();w.print();setTimeout(function(){w.close();},1000);};
-  // Fallback if onload doesn't fire
-  setTimeout(function(){if(!w.closed){w.focus();w.print();}},600);
+  w.onload=function(){w.focus();w.print();setTimeout(function(){w.close();},1500);};
+  setTimeout(function(){if(!w.closed){w.focus();w.print();}},800);
 }
 
 function getUnits(item){return item.units&&item.units.length?item.units:[{id:'base',name:item.unit||'piece',qtyInParent:1,sellPrice:item.price,isBase:true}];}
@@ -3745,10 +3772,10 @@ function printSupStatement(){
   const finalBalColor=owed>0?'#c0392b':owed<0?'#27ae60':'#333';
   const finalBalText=owed>0?'₦'+fmt(owed):owed<0?'−₦'+fmt(Math.abs(owed)):'₦0.00 (Settled)';
   const leftInfo=`<strong>${s.name}</strong><br/>Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'} · Acct Name: ${s.accname||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''}`;
-  const html=printHeaderHtml(leftInfo,'Supplier Statement')
+  const _supStmtHtml=printHeaderHtml(leftInfo,'Supplier Statement')
     +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:7px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:7px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Debt (+)</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Payment (-)</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>')+'</tbody></table>'
     +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${finalBalColor}">Final Balance: ${finalBalText}${owed<0?' (Supplier owes YOU)':owed>0?' (You owe supplier)':''}</div></div>`;
-  closeModal('modal-sup-statement');openPrintWindow(html);
+  closeModal('modal-sup-statement');openPrintWindow(_supStmtHtml);
 }
 // =================== CUSTOMER DEBT ===================
 function openDebtPayment(custId){
@@ -3786,10 +3813,10 @@ function printCustStatement(){
   const custFinalColor=balance>0?'#27ae60':balance<0?'#c0392b':'#333';
   const custFinalText=balance>0?'₦'+fmt(balance):balance<0?'−₦'+fmt(Math.abs(balance)):'₦0.00 (Settled)';
   const leftInfo=`<strong>${c.name}</strong><br/>Phone: ${c.phone||'—'} · Address: ${c.address||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''}`;
-  const custHtml=printHeaderHtml(leftInfo,'Customer Statement')
+  const _custStmtHtml=printHeaderHtml(leftInfo,'Customer Statement')
     +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:7px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:7px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Amount</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Debt</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>')+'</tbody></table>'
     +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${custFinalColor}">Final Balance: ${custFinalText}${balance>0?' (Customer owes YOU)':balance<0?' (You owe customer)':''}</div></div>`;
-  closeModal('modal-cust-statement');openPrintWindow(custHtml);
+  closeModal('modal-cust-statement');openPrintWindow(_custStmtHtml);
 }
 // =================== THEME ===================
 function toggleTheme(){
@@ -4073,11 +4100,11 @@ function printExpSupStatement(){
   const expFinalColor=expSupOwed>0?'#c0392b':expSupOwed<0?'#27ae60':'#333';
   const expFinalText=expSupOwed>0?'₦'+fmt(expSupOwed):expSupOwed<0?'−₦'+fmt(Math.abs(expSupOwed)):'₦0.00 (Settled)';
   const leftInfo=`<strong>${s.name}</strong><br/>Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'}`;
-  const expHtml=printHeaderHtml(leftInfo,'Expense Supplier Statement')
+  const _expStmtHtml=printHeaderHtml(leftInfo,'Expense Supplier Statement')
     +'<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:6px;border:1px solid #ccc">Date</th><th style="padding:6px;border:1px solid #ccc">Description</th><th style="padding:6px;border:1px solid #ccc">Debit</th><th style="padding:6px;border:1px solid #ccc">Credit</th><th style="padding:6px;border:1px solid #ccc">Balance</th></tr></thead>'
     +'<tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:12px">No transactions</td></tr>')+'</tbody></table>'
     +`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${expFinalColor}">Final Balance: ${expFinalText}${expSupOwed<0?' (Supplier owes YOU)':expSupOwed>0?' (You owe supplier)':''}</div></div>`;
-  openPrintWindow(expHtml);
+  openPrintWindow(_expStmtHtml);
 }
 // =================== GENERAL EXPENSES ===================
 const EXP_CATS={shop_supplies:'🛍️ Shop Supplies',capital:'🪑 Capital Expense',wages:'👤 Staff Wages',adashi:'💰 Adashi',other:'📌 Other'};
@@ -4092,20 +4119,32 @@ function toggleExpCat(){
 function addExpSupplyItem(){
   expSupplyCount++;const n=expSupplyCount;
   const saved=DB.savedSupplyItems||[];const opts=saved.map(i=>`<option value="${i}">${i}</option>`).join('');
-  const row=document.createElement('div');row.id='esi-'+n;row.style.cssText='display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:flex-end;margin-bottom:8px';
-  row.innerHTML=`<div><label>Item</label><input list="ssl-${n}" id="esi-name-${n}" placeholder="e.g. Plastic bags" oninput="calcExpSupplyTotal()"/><datalist id="ssl-${n}">${opts}</datalist></div>
+  const row=document.createElement('div');row.id='esi-'+n;row.style.cssText='background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px';
+  row.innerHTML=`<div style="display:grid;grid-template-columns:1fr 110px auto auto;gap:8px;align-items:flex-end">
+  <div><label>Item</label><input list="ssl-${n}" id="esi-name-${n}" placeholder="e.g. Plastic bags" oninput="calcExpSupplyTotal()"/><datalist id="ssl-${n}">${opts}</datalist></div>
   <div><label>Price ₦</label><input type="number" id="esi-price-${n}" placeholder="0" oninput="calcExpSupplyTotal()"/></div>
-  <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="g('esi-${n}').remove();calcExpSupplyTotal()">×</button>`;
+  <div><label>Photo</label><button type="button" class="btn btn-ghost btn-sm" style="padding:6px 8px" onclick="g('esi-img-input-${n}').click()" title="Add photo">📷</button>
+    <input type="file" id="esi-img-input-${n}" accept="image/*" style="display:none" onchange="loadExpItemImg(this,'esi-img-${n}','esi-img-prev-${n}')"/>
+    <input type="hidden" id="esi-img-${n}"/>
+    <div id="esi-img-prev-${n}" style="margin-top:4px"></div>
+  </div>
+  <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="g('esi-${n}').remove();calcExpSupplyTotal()">×</button></div>`;
   g('exp-supply-items-list').appendChild(row);
 }
 function calcExpSupplyTotal(){let t=0;document.querySelectorAll('[id^="esi-price-"]').forEach(el=>t+=parseFloat(el.value)||0);const el=g('exp-supply-total');if(el)el.textContent='₦'+fmt(t);}
 function addExpCapitalItem(){
   expCapCount++;const n=expCapCount;
-  const row=document.createElement('div');row.id='eci-'+n;row.style.cssText='display:grid;grid-template-columns:1fr 80px 100px auto;gap:8px;align-items:flex-end;margin-bottom:8px';
-  row.innerHTML=`<div><label>Item</label><input id="eci-name-${n}" placeholder="e.g. Chair" oninput="calcExpCapTotal()"/></div>
+  const row=document.createElement('div');row.id='eci-'+n;row.style.cssText='background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px';
+  row.innerHTML=`<div style="display:grid;grid-template-columns:1fr 80px 100px auto auto;gap:8px;align-items:flex-end">
+  <div><label>Item</label><input id="eci-name-${n}" placeholder="e.g. Chair" oninput="calcExpCapTotal()"/></div>
   <div><label>Qty</label><input type="number" id="eci-qty-${n}" placeholder="1" min="1" value="1" oninput="calcExpCapTotal()"/></div>
   <div><label>Price ₦</label><input type="number" id="eci-price-${n}" placeholder="0" oninput="calcExpCapTotal()"/></div>
-  <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="g('eci-${n}').remove();calcExpCapTotal()">×</button>`;
+  <div><label>Photo</label><button type="button" class="btn btn-ghost btn-sm" style="padding:6px 8px" onclick="g('eci-img-input-${n}').click()" title="Add photo">📷</button>
+    <input type="file" id="eci-img-input-${n}" accept="image/*" style="display:none" onchange="loadExpItemImg(this,'eci-img-${n}','eci-img-prev-${n}')"/>
+    <input type="hidden" id="eci-img-${n}"/>
+    <div id="eci-img-prev-${n}" style="margin-top:4px"></div>
+  </div>
+  <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="g('eci-${n}').remove();calcExpCapTotal()">×</button></div>`;
   g('exp-capital-items-list').appendChild(row);
 }
 function calcExpCapTotal(){let t=0;document.querySelectorAll('[id^="eci-price-"]').forEach(el=>{const n=el.id.replace('eci-price-','');const qty=parseInt(g('eci-qty-'+n)?.value)||1;t+=(parseFloat(el.value)||0)*qty;});const el=g('exp-capital-total');if(el)el.textContent='₦'+fmt(t);}
@@ -4134,10 +4173,10 @@ function saveExpense(){
   const paidBy=v('exp-paid-by');const note=v('exp-note');
   let amount=0;let desc='';let items=[];let staffLines=[];
   if(cat==='shop_supplies'){
-    document.querySelectorAll('[id^="esi-name-"]').forEach(el=>{const n=el.id.replace('esi-name-','');const name=el.value.trim();const price=parseFloat(g('esi-price-'+n)?.value)||0;if(name&&price>0){items.push({name,price});amount+=price;if(!DB.savedSupplyItems)DB.savedSupplyItems=[];if(!DB.savedSupplyItems.includes(name))DB.savedSupplyItems.push(name);}});
+    document.querySelectorAll('[id^="esi-name-"]').forEach(el=>{const n=el.id.replace('esi-name-','');const name=el.value.trim();const price=parseFloat(g('esi-price-'+n)?.value)||0;const img=g('esi-img-'+n)?.value||'';if(name&&price>0){items.push({name,price,img});amount+=price;if(!DB.savedSupplyItems)DB.savedSupplyItems=[];if(!DB.savedSupplyItems.includes(name))DB.savedSupplyItems.push(name);}});
     desc=items.map(i=>i.name).join(', ');
   } else if(cat==='capital'){
-    document.querySelectorAll('[id^="eci-name-"]').forEach(el=>{const n=el.id.replace('eci-name-','');const name=el.value.trim();const qty=parseInt(g('eci-qty-'+n)?.value)||1;const price=parseFloat(g('eci-price-'+n)?.value)||0;if(name&&price>0){items.push({name,qty,price,total:qty*price});amount+=qty*price;}});
+    document.querySelectorAll('[id^="eci-name-"]').forEach(el=>{const n=el.id.replace('eci-name-','');const name=el.value.trim();const qty=parseInt(g('eci-qty-'+n)?.value)||1;const price=parseFloat(g('eci-price-'+n)?.value)||0;const img=g('eci-img-'+n)?.value||'';if(name&&price>0){items.push({name,qty,price,total:qty*price,img});amount+=qty*price;}});
     desc=items.map(i=>`${i.qty>1?i.qty+'× ':''}${i.name}`).join(', ');
   } else if(cat==='wages'){
     document.querySelectorAll('[id^="ewi-staff-"]').forEach(el=>{const n=el.id.replace('ewi-staff-','');const staffId=el.value;const amt=parseFloat(g('ewi-amt-'+n)?.value)||0;const staff=DB.staff.find(s=>s.id===staffId);if(staff&&amt>0){staffLines.push({staffId,staffName:staff.name,amount:amt});amount+=amt;}});
@@ -4245,7 +4284,7 @@ function openExpCatDetail(cat){
   } else if(cat==='shop_supplies'){
     g('exp-cat-detail-table').innerHTML=`<div class="card"><table><thead><tr><th>Date</th><th>Items</th><th>Total</th><th>Paid By</th></tr></thead><tbody>
     ${exps.map(e=>`<tr><td class="text-muted text-sm">${e.date}</td>
-      <td class="text-sm">${(e.items||[]).length>0?(e.items||[]).map(i=>`${i.name}: ₦${fmt(i.price)}`).join(', '):e.desc||'—'}</td>
+      <td class="text-sm">${(e.items||[]).length>0?(e.items||[]).map(i=>`${i.name}: ₦${fmt(i.price)}${i.img?` <img src="${i.img}" style="width:28px;height:28px;border-radius:4px;object-fit:cover;vertical-align:middle;margin-left:4px"/>`:''}` ).join(', '):e.desc||'—'}</td>
       <td class="mono" style="color:var(--accent)">₦${fmt(e.amount)}</td>
       <td class="text-sm">${e.paidBy||'Cash'}</td></tr>`).join('')}</tbody></table></div>`;
   } else {
@@ -4654,7 +4693,7 @@ function printCashFlowStatement(){
   const ss=DB.shopSettings||{};
   const phones=[ss.phone1,ss.phone2,ss.phone3].filter(Boolean).join(' · ');
   const periodStr=(from||'Beginning')+' → '+(to||'Today');
-  const cfHtml=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
+  const _cfHtml=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
       <div>
         <h2 style="font-size:16px;margin:0 0 3px">${ss.name||'Ado Salisu Sarki Mai Charbi'}</h2>
@@ -4696,16 +4735,16 @@ function printCashFlowStatement(){
     </table>
     <div style="margin-top:8px;font-size:10px;color:#aaa;text-align:center">${events.length} transactions · ${periodStr}</div>
   </div>`;
-  closeModal('modal-cashflow');openPrintWindow(cfHtml);
+  closeModal('modal-cashflow');openPrintWindow(_cfHtml);
 }
 function printReports(){
-  const repHtml=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
+  const _repHtml=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
     <h2>${DB.shopSettings?.name||'Ado Salisu Sarki Mai Charbi'}</h2>
     <p style="font-size:12px;color:#555">Report Period: ${g('rep-from')?.value||'—'} to ${g('rep-to')?.value||'—'} · Printed: ${new Date().toLocaleString()}</p>
     <hr style="margin:8px 0"/>
     ${g('rep-content')?.innerHTML||''}
   </div>`;
-  openPrintWindow(repHtml);
+  openPrintWindow(_repHtml);
 }
 function toggleRepBreakdown(type){
   const panel=g('rep-breakdown-panel');
@@ -5825,6 +5864,344 @@ function showAITyping() {
 function hideAITyping() {
   var el = document.getElementById("ai-typing-indicator");
   if(el) el.remove();
+}
+
+// =================== FEATURE 2: SUPPLIER PRESELECT & DESTINATION DISTRIBUTION ===================
+function openAddItemFromSupplier(){
+  openAddItemModal('shop');
+  // Pre-select current supplier
+  setTimeout(()=>{
+    const sel=g('fi-sup');
+    if(sel&&currentSupId)sel.value=currentSupId;
+    sv('fi-from-supplier',currentSupId||'');
+  },50);
+}
+
+let fiDestCount=0;
+function initFiDestRows(){
+  fiDestCount=0;
+  const cont=g('fi-dest-rows');if(!cont)return;
+  cont.innerHTML='';
+  addFiDestRow();
+}
+function addFiDestRow(){
+  fiDestCount++;const n=fiDestCount;
+  const cont=g('fi-dest-rows');if(!cont)return;
+  const allDests=[{val:'shop',label:'🏪 Shop'},...ROOMS.map(r=>({val:r,label:'🏠 '+r}))];
+  const opts=allDests.map(d=>`<option value="${d.val}">${d.label}</option>`).join('');
+  const row=document.createElement('div');row.id='fidr-'+n;
+  row.style.cssText='display:grid;grid-template-columns:1fr auto;gap:8px;align-items:flex-end;margin-bottom:6px';
+  row.innerHTML=`<div><label style="font-size:10px">Destination</label><select id="fidr-dest-${n}">${opts}</select></div>
+  <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="if(document.querySelectorAll('[id^=fidr-]').length>1)g('fidr-${n}').remove()">×</button>`;
+  cont.appendChild(row);
+}
+function getFiDestinations(){
+  const dests=[];
+  document.querySelectorAll('[id^="fidr-dest-"]').forEach(sel=>{
+    if(sel.value&&!dests.includes(sel.value))dests.push(sel.value);
+  });
+  return dests.length?dests:['shop'];
+}
+
+// =================== FEATURE 3: SELL PRICE AUTO-CALCULATION ===================
+function calcNewItemSubSellPrices(changedIdx){
+  // changedIdx: the index that was manually changed; auto-fill from that point downward
+  const baseIdx=changedIdx===undefined?0:changedIdx;
+  const basePrice=newItemUnits[baseIdx]?.sellPrice||0;
+  if(!basePrice)return;
+  let price=basePrice;
+  for(let i=baseIdx+1;i<newItemUnits.length;i++){
+    const qip=newItemUnits[i].qtyInParent||1;
+    price=price/qip;
+    newItemUnits[i].sellPrice=parseFloat(price.toFixed(4));
+    const el=document.querySelector(`[data-nisell="${i}"]`);
+    if(el&&!el.dataset.manualOverride){el.value=price.toFixed(2);}
+  }
+}
+
+// =================== FEATURE 4: EXP PURCH ITEM WITH UNIT HIERARCHY ===================
+let expPurchItemUnits={};
+function addExpPurchItem(){
+  expPurchCount++;const n=expPurchCount;
+  const saved=DB.savedSupplyItems||[];
+  const opts=saved.map(i=>`<option value="${i}">${i}</option>`).join('');
+  // Build item options from DB
+  const dbOpts='<option value="">— New item —</option>'+(DB.items||[]).map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+  const row=document.createElement('div');row.id='epi-'+n;
+  row.style.cssText='background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px';
+  row.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 70px 100px 90px auto;gap:7px;align-items:flex-end;margin-bottom:8px">
+      <div><label>Item (existing or new)</label>
+        <select id="epi-item-sel-${n}" onchange="onExpPurchItemChange(${n})"><option value="">— Select or type new —</option>${(DB.items||[]).map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select>
+        <input list="spl-${n}" id="epi-name-${n}" placeholder="Or type new item name..." oninput="calcExpPurchRow(${n})" style="margin-top:4px"/>
+        <datalist id="spl-${n}">${opts}</datalist>
+      </div>
+      <div><label>Qty</label><input type="number" id="epi-qty-${n}" placeholder="1" min="1" value="1" oninput="calcExpPurchRow(${n})"/></div>
+      <div><label>Unit Price ₦</label><input type="number" id="epi-price-${n}" placeholder="0" oninput="calcExpPurchRow(${n})"/></div>
+      <div><label>Line Total</label><input type="number" id="epi-total-${n}" placeholder="0" readonly style="color:var(--accent3);background:transparent"/></div>
+      <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="g('epi-${n}').remove();calcExpPurchTotal()">×</button>
+    </div>
+    <div id="epi-unit-section-${n}" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Unit Hierarchy for new item</div>
+      <div id="epi-unit-rows-${n}"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addExpPurchUnitRow(${n})">+ Add Unit Level</button>
+    </div>`;
+  g('exp-purch-items-list').appendChild(row);
+  // Init with one unit row for new items
+  expPurchItemUnits[n]=[{name:'piece',qtyInParent:1,costPrice:0,sellPrice:0}];
+  // Show unit section by default for new items
+  renderExpPurchUnitRows(n);
+  g('epi-unit-section-'+n).style.display='block';
+}
+function onExpPurchItemChange(n){
+  const sel=g('epi-item-sel-'+n);
+  const nameInput=g('epi-name-'+n);
+  const unitSection=g('epi-unit-section-'+n);
+  if(sel&&sel.value){
+    // Existing item selected
+    const item=DB.items.find(x=>x.id===sel.value);
+    if(item){if(nameInput)nameInput.value=item.name;if(unitSection)unitSection.style.display='none';}
+  } else {
+    if(unitSection)unitSection.style.display='block';
+  }
+  calcExpPurchRow(n);
+}
+function renderExpPurchUnitRows(n){
+  const cont=g('epi-unit-rows-'+n);if(!cont)return;
+  const units=expPurchItemUnits[n]||[];
+  cont.innerHTML=units.map((u,i)=>`
+    <div style="display:grid;grid-template-columns:1fr ${i>0?'80px ':''} auto;gap:6px;align-items:flex-end;margin-bottom:6px">
+      <div><label style="font-size:10px">${i===0?'Unit (Largest)':'Unit Name'}</label>
+        <input value="${u.name||''}" placeholder="${i===0?'e.g. Carton':'e.g. Roll'}" oninput="expPurchItemUnits[${n}][${i}].name=this.value"/></div>
+      ${i>0?`<div><label style="font-size:10px">Per Parent</label>
+        <input type="number" value="${u.qtyInParent||1}" placeholder="e.g. 8" oninput="expPurchItemUnits[${n}][${i}].qtyInParent=parseFloat(this.value)||1"/></div>`:''}
+      <button class="btn btn-danger btn-sm" ${units.length<=1?'disabled':''} onclick="expPurchItemUnits[${n}].splice(${i},1);renderExpPurchUnitRows(${n})">×</button>
+    </div>`).join('');
+}
+function addExpPurchUnitRow(n){
+  if(!expPurchItemUnits[n])expPurchItemUnits[n]=[];
+  expPurchItemUnits[n].push({name:'',qtyInParent:1,costPrice:0,sellPrice:0});
+  renderExpPurchUnitRows(n);
+}
+
+// Override saveExpSupPurchase to handle unit hierarchy
+function saveExpSupPurchase(){
+  const s=(DB.expSuppliers||[]).find(x=>x.id===currentExpSupId);if(!s)return;
+  const items=[];let total=0;
+  const now=new Date().toLocaleString();
+  document.querySelectorAll('[id^="epi-name-"]').forEach(el=>{
+    const n=el.id.replace('epi-name-','');
+    // Check if existing item was selected
+    const sel=g('epi-item-sel-'+n);
+    const existingId=sel&&sel.value?sel.value:'';
+    const name=existingId?(DB.items.find(x=>x.id===existingId)?.name||el.value.trim()):el.value.trim();
+    const qty=parseFloat(g('epi-qty-'+n)?.value)||1;
+    const unitPrice=parseFloat(g('epi-price-'+n)?.value)||0;
+    const lineTotal=parseFloat(g('epi-total-'+n)?.value)||(qty*unitPrice);
+    if(name&&lineTotal>0){
+      items.push({name,qty,unitPrice,price:lineTotal,lineTotal,existingId});
+      total+=lineTotal;
+      if(!DB.savedSupplyItems)DB.savedSupplyItems=[];
+      if(!DB.savedSupplyItems.includes(name))DB.savedSupplyItems.push(name);
+      // If new item (no existingId), create it with unit hierarchy
+      if(!existingId){
+        const unitDefs=expPurchItemUnits[n]||[{name:'piece',qtyInParent:1}];
+        unitDefs.forEach((u,i)=>{if(!u.id)u.id='u'+i+ts();});
+        // Set cost prices
+        unitDefs[0].costPrice=unitPrice;
+        const ppu=[];ppu[unitDefs.length-1]=1;
+        for(let i=unitDefs.length-2;i>=0;i--)ppu[i]=ppu[i+1]*(unitDefs[i+1].qtyInParent||1);
+        for(let i=1;i<unitDefs.length;i++){unitDefs[i].costPrice=parseFloat((unitPrice*(ppu[i]/ppu[0])).toFixed(4));}
+        let totalPieces=qty*ppu[0];
+        const existing=DB.items.find(x=>x.name.toLowerCase()===name.toLowerCase());
+        if(!existing){
+          const newItem={id:ts(),name,price:0,cost:unitPrice,qty:totalPieces,
+            unit:unitDefs[unitDefs.length-1].name,units:unitDefs,
+            low:5,expiry:'',supplierId:'',img:'',dateAdded:now,lastRestocked:now};
+          DB.items.push(newItem);
+        } else {
+          existing.qty+=totalPieces;existing.lastRestocked=now;
+        }
+      } else {
+        // Existing item — add stock
+        const item=DB.items.find(x=>x.id===existingId);
+        if(item){
+          const units=getUnits(item);
+          const ppu=[];ppu[units.length-1]=1;
+          for(let i=units.length-2;i>=0;i--)ppu[i]=ppu[i+1]*units[i+1].qtyInParent;
+          item.qty+=qty*ppu[0];item.lastRestocked=now;
+        }
+      }
+    }
+  });
+  if(!items.length){alert('Add at least one item with a price.');return;}
+  if(!s.purchases)s.purchases=[];
+  s.purchases.unshift({id:ts(),date:g('exp-purch-date').value,items,total,note:v('exp-purch-note'),recordedAt:new Date().toLocaleString(),by:currentUser?.name||''});
+  if(s.totalOwed===undefined)s.totalOwed=0;s.totalOwed+=total;
+  save();closeModal('modal-exp-sup-purchase');
+  renderInventory&&renderInventory();renderInvStats&&renderInvStats();renderPosItems&&renderPosItems();
+  openExpSupDetail(currentExpSupId);updateBalanceCards();
+}
+
+// =================== FEATURE 5: SEND TO WITH UNIT BREAKDOWN ===================
+// Override openSendTo to show unit breakdown inputs
+function openSendTo(itemId,fromLocation){
+  const item=DB.items.find(x=>x.id===itemId);if(!item)return;
+  sv('send-item-id',itemId);sv('send-from',fromLocation);
+  g('send-to-title').textContent=`📤 Send "${item.name}"`;
+  const allDests=[{val:'shop',label:'🏪 Shop'},...ROOMS.map(r=>({val:r,label:'🏠 '+r}))];
+  g('send-dest').innerHTML=allDests.filter(d=>d.val!==fromLocation).map(d=>`<option value="${d.val}">${d.label}</option>`).join('');
+  const units=getUnits(item);
+  const avail=fromLocation==='shop'?item.qty:(DB.storerooms[fromLocation]?.find(x=>x.id===itemId)?.qty||0);
+  sv('send-price',item.price||'');
+  if(units.length>1){
+    // Show unit breakdown
+    g('send-unit-rows').style.display='block';
+    g('send-simple-row').style.display='none';
+    const ppu=[];ppu[units.length-1]=1;
+    for(let i=units.length-2;i>=0;i--)ppu[i]=ppu[i+1]*units[i+1].qtyInParent;
+    g('send-unit-inputs').innerHTML=units.map((u,i)=>`
+      <div class="flex items-center gap8 mb8">
+        <label style="width:100px;text-transform:none;font-size:13px;font-weight:600;color:var(--text)">${u.name}</label>
+        <input type="number" id="send-uqty-${i}" placeholder="0" min="0" style="width:80px"/>
+        <span class="text-muted text-sm">${ppu[i]>1?'('+ppu[i]+' '+units[units.length-1].name+' each)':''}</span>
+      </div>`).join('');
+    g('send-info').textContent=`Available in ${fromLocation==='shop'?'Shop':fromLocation}: ${avail} ${units[units.length-1].name}`;
+  } else {
+    g('send-unit-rows').style.display='none';
+    g('send-simple-row').style.display='block';
+    sv('send-qty','');
+    g('send-info').textContent=`Available in ${fromLocation==='shop'?'Shop':fromLocation}: ${avail} ${item.unit}`;
+  }
+  openModal('modal-send-to');
+}
+
+// Override confirmSendTo to use unit breakdown
+function confirmSendTo(){
+  const itemId=v('send-item-id'),from=v('send-from'),dest=g('send-dest').value;
+  const price=parseFloat(g('send-price').value)||0;
+  const item=DB.items.find(x=>x.id===itemId);if(!item)return;
+  const units=getUnits(item);
+  let qty=0;
+  if(units.length>1&&g('send-unit-rows').style.display!=='none'){
+    const ppu=[];ppu[units.length-1]=1;
+    for(let i=units.length-2;i>=0;i--)ppu[i]=ppu[i+1]*units[i+1].qtyInParent;
+    units.forEach((u,i)=>{const q=parseInt(g('send-uqty-'+i)?.value)||0;qty+=q*ppu[i];});
+  } else {
+    qty=parseInt(g('send-qty').value)||0;
+  }
+  if(qty<=0){alert('Enter quantity to send.');return;}
+  const now=new Date().toLocaleString();
+  if(from==='shop'){if(qty>item.qty){alert(`Only ${item.qty} available.`);return;}item.qty-=qty;}
+  else{const s=DB.storerooms[from]?.find(x=>x.id===itemId);if(!s||qty>s.qty){alert(`Not enough stock in ${from}.`);return;}s.qty-=qty;}
+  if(dest==='shop'){item.qty+=qty;if(price)item.price=price;item.lastRestocked=now;}
+  else{const stocks=DB.storerooms[dest];const ex=stocks.find(s=>s.id===itemId);if(ex){ex.qty+=qty;if(price)ex.price=price;}else stocks.push({id:itemId,name:item.name,qty,price,dateAdded:now});}
+  DB.roomLogs.unshift({type:'TRANSFER',room:dest==='shop'?'Shop':dest,from:from==='shop'?'Shop':from,item:item.name,qty,sellPrice:price,date:now,by:currentUser.name,remaining:from==='shop'?item.qty:(DB.storerooms[from]?.find(x=>x.id===itemId)?.qty??0)});
+  if(price&&price!==item.price){if(!DB.priceHistory)DB.priceHistory=[];DB.priceHistory.push({itemId,itemName:item.name,oldPrice:item.price,newPrice:price,date:now,by:currentUser.name,reason:'Send To: '+dest});if(dest==='shop')item.price=price;}
+  save();closeModal('modal-send-to');
+  if(from==='shop'||dest==='shop'){renderInventory();renderPosItems();}
+  if(currentRoom){renderRoomStats();renderRoomItems();renderRoomLog();}
+  alert(`✅ ${qty} ${item.unit} of "${item.name}" sent from ${from==='shop'?'Shop':from} to ${dest==='shop'?'Shop':dest}`);
+}
+
+// =================== FEATURE 6: DRAG-AND-DROP IMAGE UPLOAD ===================
+function loadExpItemImg(input,hiddenId,prevId){
+  const file=input.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const el=g(hiddenId);if(el)el.value=e.target.result;
+    const prev=g(prevId);if(prev)prev.innerHTML=`<img src="${e.target.result}" style="max-height:40px;border-radius:4px;margin-top:4px"/>`;
+  };r.readAsDataURL(file);
+}
+// Universal drag-and-drop handler: attach to any img-upload area
+function setupDragDrop(uploadAreaEl,fileInputId,previewId,dataId){
+  if(!uploadAreaEl)return;
+  uploadAreaEl.addEventListener('dragover',e=>{e.preventDefault();uploadAreaEl.style.borderColor='var(--accent3)';uploadAreaEl.style.background='rgba(245,166,35,0.08)';});
+  uploadAreaEl.addEventListener('dragleave',e=>{uploadAreaEl.style.borderColor='';uploadAreaEl.style.background='';});
+  uploadAreaEl.addEventListener('drop',e=>{
+    e.preventDefault();uploadAreaEl.style.borderColor='';uploadAreaEl.style.background='';
+    const file=e.dataTransfer.files[0];if(!file||!file.type.startsWith('image/'))return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      const prev=g(previewId);if(prev){prev.innerHTML=`<img src="${ev.target.result}" style="max-height:100px;border-radius:7px"/>`;}
+      const dat=g(dataId);if(dat)dat.value=ev.target.result;
+      const inp=g(fileInputId);if(inp){// trigger change event for any other listeners
+        const dt=new DataTransfer();dt.items.add(file);inp.files=dt.files;}
+    };r.readAsDataURL(file);
+  });
+}
+// Setup drag-and-drop for all static img-upload areas on load
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    setupDragDrop(g('fi-img-upload-area'),'img-input','img-preview','fi-img');
+    setupDragDrop(g('edit-img-area'),'edit-img-input','edit-img-preview','ei-img');
+  },500);
+});
+
+// =================== FEATURE 2b: SAVE ADDITEM WITH MULTI-DEST & SUPPLIER DELIVERY ===================
+// Override saveAddItem to handle multi-destination and supplier delivery recording
+const _origSaveAddItem=saveAddItem;
+function saveAddItem(){
+  const dest=v('fi-dest');
+  const selectedId=v('fi-selected-id');
+  if(selectedId){_origSaveAddItem();return;}// existing item — no change needed
+  // NEW item path: handle multi-destination
+  const name=g('fi-item-search').value.trim();if(!name){alert('Enter item name.');return;}
+  if(newItemUnits.some(u=>!u.name)){alert('All unit levels need a name.');return;}
+  newItemUnits.forEach((u,i)=>{if(!u.id)u.id='u'+i+ts();});
+  const rows=document.querySelectorAll('#fi-unit-rows .unit-row');
+  rows.forEach((row,i)=>{
+    const inputs=row.querySelectorAll('input:not([disabled]):not([readonly])');
+    if(i===0){newItemUnits[i].name=inputs[0]?.value||newItemUnits[i].name;newItemUnits[i].costPrice=parseFloat(inputs[1]?.value)||newItemUnits[i].costPrice||0;newItemUnits[i].sellPrice=parseFloat(inputs[2]?.value)||newItemUnits[i].sellPrice||0;}
+    else{newItemUnits[i].name=inputs[0]?.value||newItemUnits[i].name;newItemUnits[i].qtyInParent=parseFloat(inputs[1]?.value)||newItemUnits[i].qtyInParent||1;newItemUnits[i].sellPrice=parseFloat(inputs[2]?.value)||newItemUnits[i].sellPrice||0;}
+  });
+  const ppu=[];ppu[newItemUnits.length-1]=1;
+  for(let i=newItemUnits.length-2;i>=0;i--)ppu[i]=ppu[i+1]*newItemUnits[i+1].qtyInParent;
+  let totalPieces=0;const breakdown=[];
+  newItemUnits.forEach((u,i)=>{const q=parseInt(g(`fi-init-qty-${i}`)?.value)||0;if(q>0){totalPieces+=q*ppu[i];breakdown.push(`${q} ${u.name}`);}});
+  const now=new Date().toLocaleString();
+  const supId=v('fi-sup');
+  const newItem={id:ts(),name,price:newItemUnits[0].sellPrice||0,cost:newItemUnits[0].costPrice||0,
+    qty:0,unit:newItemUnits[newItemUnits.length-1].name,units:newItemUnits,
+    low:ii('fi-low')||5,expiry:v('fi-expiry'),supplierId:supId,img:v('fi-img'),
+    dateAdded:now,lastRestocked:totalPieces>0?now:null};
+  DB.items.push(newItem);
+  // Multi-destination distribution
+  const destinations=getFiDestinations();
+  const primaryDest=destinations[0]||dest||'shop';
+  if(totalPieces>0){
+    const isRoomPrimary=primaryDest!=='shop'&&ROOMS.includes(primaryDest);
+    if(isRoomPrimary){
+      DB.storerooms[primaryDest].push({id:newItem.id,name,qty:totalPieces,price:newItem.price,dateAdded:now});
+      DB.roomLogs.unshift({type:'IN',room:primaryDest,item:name,qty:totalPieces,breakdown:breakdown.join(' + '),date:now,by:currentUser.name});
+    } else {newItem.qty=totalPieces;}
+    // Additional destinations — distribute remaining (logged as transfers)
+    for(let i=1;i<destinations.length;i++){
+      const d=destinations[i];
+      if(d&&d!==primaryDest&&ROOMS.includes(d)){
+        DB.roomLogs.unshift({type:'IN',room:d,item:name,qty:0,breakdown:'(additional destination)',date:now,by:currentUser.name});
+      }
+    }
+    // Record delivery in supplier history
+    if(supId){
+      const sup=DB.suppliers.find(x=>x.id===supId);
+      if(sup){
+        if(!sup.deliveries)sup.deliveries=[];
+        const totalCost=(newItemUnits[0].costPrice||0)*(totalPieces/ppu[0]);
+        const distInfo=destinations.map(d=>({dest:d,qty:d===primaryDest?totalPieces:0}));
+        sup.deliveries.unshift({id:ts(),date:now,item:name,itemId:newItem.id,
+          breakdown:breakdown.join(' + '),totalPieces,costPerLargest:newItemUnits[0].costPrice||0,
+          totalCost,largestUnit:newItemUnits[0].name,distributions:distInfo,supplierId:supId});
+        if(sup.totalOwed===undefined)sup.totalOwed=0;
+        sup.totalOwed+=totalCost;
+      }
+    }
+  }
+  save();closeModal('modal-add-item');
+  renderInventory();renderInvStats();renderPosItems();
+  if(currentRoom){renderRoomStats();renderRoomItems();renderRoomLog();}
+  refreshDeliveryCartItemSelects(newItem.id);
+  toast('"'+name+'" created!','success');
 }
 
 
