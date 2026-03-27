@@ -110,6 +110,11 @@ body.light-mode .sb-user-avatar{
 }
 
 /* ===== GLOBAL ===== */
+/* Hide number input spin buttons globally */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+
 .sort-th{cursor:pointer;user-select:none;white-space:nowrap;}
 .sort-th:hover{color:var(--accent3);}
 .sort-th .sort-arrow{font-size:10px;margin-left:3px;opacity:0.5;}
@@ -957,7 +962,7 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
         <div class="flex gap8 flex-wrap mt12">
           <button class="btn btn-gold btn-sm" onclick="openModal('modal-sup-delivery')">📦 Record Delivery</button>
           <button class="btn btn-success btn-sm" onclick="openSupPaymentModal()">💳 Record Payment</button>
-          <button class="btn btn-ghost btn-sm" onclick="openAddItemFromSupplier()">➕ Add Item</button>
+          <button class="btn btn-ghost btn-sm" onclick="openAddItemFromSupplier()">➕ New</button>
           <button class="btn btn-ghost btn-sm" onclick="g('bulk-upload-sup').click()" title="Upload Template 3 stock file">📂 Upload Stock</button>
           <input type="file" id="bulk-upload-sup" accept=".xlsx,.xls,.csv" style="display:none" onchange="bulkUploadSupplierStock(this)"/>
           <button class="btn btn-ghost btn-sm" onclick="openSupStatementModal()">🖨️ Statement</button>
@@ -1357,6 +1362,10 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
     <div class="card-title" style="font-size:13px;margin-bottom:10px">Change Password</div>
     <div class="form-row"><label>New Password</label><input id="est-pass" type="password" placeholder="Leave blank to keep current"/></div>
     <div class="form-row"><label>Confirm Password</label><input id="est-pass2" type="password" placeholder="Repeat new password"/></div>
+    <div id="est-tab-perms" style="border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">🔒 Tab Access</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px" id="est-perm-checkboxes"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-edit-staff')">Cancel</button>
       <button class="btn btn-gold" onclick="saveEditStaff()">Save Changes</button>
@@ -1433,6 +1442,10 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
         <div><label>Username *</label><input id="st-user" placeholder="aminu"/></div>
         <div><label>Password *</label><input id="st-pass" type="password" placeholder="Password"/></div>
       </div>
+    </div>
+    <div id="st-tab-perms" style="border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">🔒 Tab Access</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px" id="st-perm-checkboxes"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-add-staff')">Cancel</button>
@@ -1604,6 +1617,7 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-sup-statement')">Cancel</button>
       <button class="btn btn-gold" onclick="printSupStatement()">🖨️ Print</button>
+      <button class="btn btn-success btn-sm" onclick="sendStmtWhatsApp('sup')" style="background:#25D366">💬 WhatsApp</button>
     </div>
   </div>
 </div>
@@ -1621,6 +1635,7 @@ tr:hover td{background:var(--hover-row);transition:background 0.12s;}
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-cust-statement')">Cancel</button>
       <button class="btn btn-gold" onclick="printCustStatement()">🖨️ Print</button>
+      <button class="btn btn-success btn-sm" onclick="sendStmtWhatsApp('cust')" style="background:#25D366">💬 WhatsApp</button>
     </div>
   </div>
 </div>
@@ -2071,6 +2086,10 @@ window.addEventListener('DOMContentLoaded',async()=>{
   }
   startAutoBackup();
   loadLang();
+  // Init add-staff permission checkboxes
+  if(typeof renderTabPermCheckboxes==='function'){
+    renderTabPermCheckboxes('st-perm-checkboxes',DEFAULT_TABS['cashier']||[]);
+  }
 });
 
 function updateNavAvatar(){
@@ -2163,11 +2182,32 @@ function savePasswordOnly(){
   save();sv('pp-edit-pass','');sv('pp-edit-pass2','');g('pp-pass-section').style.display='none';
   alert('✅ Password updated!');
 }
+const ALL_TABS=['pos','inventory','storerooms','customers','suppliers','receipts','reports','expenses','settings'];
+const DEFAULT_TABS={
+  admin:ALL_TABS,
+  cashier:['pos','receipts'],
+  storekeeper:['storerooms','inventory'],
+  wages_only:[]
+};
 function applyRole(){
   const r=currentUser.role;
   document.querySelectorAll('.admin-only').forEach(el=>el.style.display=r==='admin'?'':'none');
-  if(r==='cashier'){['tab-inventory','tab-storerooms','tab-customers','tab-suppliers','tab-reports','tab-settings'].forEach(id=>{const t=g(id);if(t)t.style.display='none';});}
-  if(r==='storekeeper'){['tab-pos','tab-customers','tab-suppliers','tab-receipts','tab-reports','tab-settings'].forEach(id=>{const t=g(id);if(t)t.style.display='none';});showPage('storerooms',g('tab-storerooms'));}
+  if(r==='admin')return;// Admin sees everything
+  // Determine allowed tabs: use custom perms if set, else role defaults
+  const allowed=currentUser.tabs||(DEFAULT_TABS[r]||[]);
+  ALL_TABS.forEach(tab=>{
+    const el=g('tab-'+tab);
+    if(!el)return;
+    if(allowed.includes(tab)){el.style.display='';}
+    else{el.style.display='none';}
+  });
+  // Navigate to first allowed tab
+  if(r==='storekeeper'&&allowed.includes('storerooms')){showPage('storerooms',g('tab-storerooms'));}
+  else if(!allowed.includes('pos')&&allowed.length>0){
+    const first=allowed[0];
+    const firstEl=g('tab-'+first);
+    if(firstEl)showPage(first,firstEl);
+  }
 }
 let posGridScrollListener = null;
 
@@ -2363,6 +2403,8 @@ function renderNewItemUnitRows(){
     cont.appendChild(row);
   });
   refreshInitQtyInputs();
+  // Refresh destination qty rows whenever units change
+  if(typeof renderFiDestUnitRows==='function')renderFiDestUnitRows();
 }
 
 function addNewItemUnitRow(){
@@ -2667,24 +2709,47 @@ function openItemHistory(itemId,context){
 // item.cost is for the LARGEST (base) unit
 
 
-function getShopHeader(){
+function getShopHeaderHtml(){
   const ss=DB.shopSettings||{};
-  const phones=[ss.phone1,ss.phone2,ss.phone3].filter(Boolean).join(' | ');
-  const bankLine=ss.account?'Account: '+ss.account+(ss.bank?' | Bank: '+ss.bank:'')+(ss.accountName?' | '+ss.accountName:''):'';
-  let h='<h2 style="font-size:16px;margin:0 0 4px">'+(ss.name||'Ado Salisu Sarki Mai Charbi')+'</h2>';
-  if(ss.address)h+='<p style="font-size:11px;color:#555;margin:2px 0">'+ss.address+'</p>';
-  if(phones)h+='<p style="font-size:11px;color:#555;margin:2px 0">'+phones+'</p>';
-  if(bankLine)h+='<p style="font-size:11px;color:#555;margin:2px 0">'+bankLine+'</p>';
+  const L='<div style="font-size:11px;color:#333;margin:2px 0">';
+  let h='<div style="font-size:15px;font-weight:800;color:#000;margin-bottom:3px">'+(ss.name||'')+'</div>';
+  if(ss.address)h+=L+ss.address+'</div>';
+  [ss.phone1,ss.phone2,ss.phone3].filter(Boolean).forEach(p=>{h+=L+p+'</div>';});
+  if(ss.account)h+=L+'Account: '+ss.account+'</div>';
+  if(ss.bank)h+=L+'Bank: '+ss.bank+'</div>';
+  if(ss.accountName)h+=L+'Name: '+ss.accountName+'</div>';
   return h;
 }
-function printHeaderHtml(leftContent,title){
+// Legacy alias
+function getShopHeader(){return getShopHeaderHtml();}
+
+function buildClientBlock(lines){
+  // lines: [{label?,text,bold?}]
+  return lines.filter(l=>l&&l.text).map(l=>{
+    const txt=l.bold?'<strong style="font-size:13px">'+l.text+'</strong>':l.text;
+    return '<div style="font-size:11px;color:#222;margin:2px 0">'+(l.label?'<span style="color:#666">'+l.label+'</span> ':'')+txt+'</div>';
+  }).join('');
+}
+
+function printHeaderHtml(legacyLeft, title, clientLines){
+  const shopBlock=getShopHeaderHtml();
+  let clientBlock='';
+  if(clientLines){
+    clientBlock=buildClientBlock(clientLines);
+  } else {
+    // Legacy: render the raw HTML string
+    clientBlock='<div style="font-size:12px;color:#333">'+legacyLeft+'</div>';
+  }
   return '<div style="font-family:Arial,sans-serif;padding:24px;color:#000">'
-    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">'
-    +'<div>'+getShopHeader()+'</div>'
-    +'<div style="text-align:right;font-size:11px;color:#555"><div style="font-size:13px;font-weight:700;color:#000">'+title+'</div><div>Printed: '+nowFormatted()+'</div></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
+    +'<div style="font-size:15px;font-weight:800;color:#000">'+title+'</div>'
+    +'<div style="font-size:11px;color:#555">Printed: '+nowFormatted()+'</div>'
     +'</div>'
-    +'<hr style="margin:8px 0"/>'
-    +'<div style="font-size:12px;color:#333;margin-bottom:10px">'+leftContent+'</div>';
+    +'<hr style="margin:6px 0 10px"/>'
+    +shopBlock
+    +'<div style="height:8px"></div>'
+    +clientBlock
+    +'<hr style="margin:10px 0 8px"/>';
 }
 
 function openPrintWindow(html){
@@ -3712,7 +3777,7 @@ function openSupDetail(id){
   const ic=g('sup-info-card');
   if(ic)ic.innerHTML=`<div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:10px">${s.name}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-      <div><div class="stat-label">Phone</div><div>${s.phone||'—'}</div></div>
+      <div><div class="stat-label">Phone</div><div>${s.phone||'—'}${s.phone?`<a href="https://wa.me/${s.phone.replace(/[^0-9]/g,'')}" target="_blank" style="display:inline-flex;align-items:center;gap:3px;background:#25D366;color:#fff;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;text-decoration:none;margin-left:6px">💬 WA</a>`:''}</div></div>
       <div><div class="stat-label">Account Number</div><div class="mono">${s.account||'—'}</div></div>
       <div><div class="stat-label">Address</div><div>${s.address||'—'}</div></div>
       <div><div class="stat-label">Bank</div><div>${s.bank||'—'}</div></div>
@@ -3771,8 +3836,15 @@ function printSupStatement(){
   // owed>0 = we owe them (red), owed<0 = they owe us (green), 0 = settled
   const finalBalColor=owed>0?'#c0392b':owed<0?'#27ae60':'#333';
   const finalBalText=owed>0?'₦'+fmt(owed):owed<0?'−₦'+fmt(Math.abs(owed)):'₦0.00 (Settled)';
-  const leftInfo=`<strong>${s.name}</strong><br/>Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'} · Acct Name: ${s.accname||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''}`;
-  const _supStmtHtml=printHeaderHtml(leftInfo,'Supplier Statement')
+  const _supClientLines=[
+    {text:s.name,bold:true},
+    ...(s.phone?[{label:'Phone:',text:s.phone}]:[]),
+    ...(s.account?[{label:'Account:',text:s.account}]:[]),
+    ...(s.bank?[{label:'Bank:',text:s.bank}]:[]),
+    ...(s.accname?[{label:'Acct Name:',text:s.accname}]:[]),
+    ...(from||to?[{label:'Period:',text:(from||'beginning')+' to '+(to||'today')}]:[])
+  ];
+  const _supStmtHtml=printHeaderHtml('','Supplier Statement',_supClientLines)
     +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:7px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:7px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Debt (+)</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Payment (-)</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>')+'</tbody></table>'
     +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${finalBalColor}">Final Balance: ${finalBalText}${owed<0?' (Supplier owes YOU)':owed>0?' (You owe supplier)':''}</div></div>`;
   closeModal('modal-sup-statement');openPrintWindow(_supStmtHtml);
@@ -3812,8 +3884,13 @@ function printCustStatement(){
   // balance>0 = customer owes us (GREEN = receivable), balance<0 = we owe them (RED)
   const custFinalColor=balance>0?'#27ae60':balance<0?'#c0392b':'#333';
   const custFinalText=balance>0?'₦'+fmt(balance):balance<0?'−₦'+fmt(Math.abs(balance)):'₦0.00 (Settled)';
-  const leftInfo=`<strong>${c.name}</strong><br/>Phone: ${c.phone||'—'} · Address: ${c.address||'—'}${from||to?' · Period: '+(from||'beginning')+' to '+(to||'today'):''}`;
-  const _custStmtHtml=printHeaderHtml(leftInfo,'Customer Statement')
+  const _custClientLines=[
+    {text:c.name,bold:true},
+    ...(c.phone?[{label:'Phone:',text:c.phone}]:[]),
+    ...(c.address?[{label:'Address:',text:c.address}]:[]),
+    ...(from||to?[{label:'Period:',text:(from||'beginning')+' to '+(to||'today')}]:[])
+  ];
+  const _custStmtHtml=printHeaderHtml('','Customer Statement',_custClientLines)
     +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:7px;border:1px solid #ccc;text-align:left">Date</th><th style="padding:7px;border:1px solid #ccc;text-align:left">Description</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Amount</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Debt</th><th style="padding:7px;border:1px solid #ccc;text-align:right">Balance</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="padding:12px;text-align:center;color:#999">No transactions</td></tr>')+'</tbody></table>'
     +`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${custFinalColor}">Final Balance: ${custFinalText}${balance>0?' (Customer owes YOU)':balance<0?' (You owe customer)':''}</div></div>`;
   closeModal('modal-cust-statement');openPrintWindow(_custStmtHtml);
@@ -3988,7 +4065,7 @@ function openExpSupDetail(id){
   g('exp-sup-balance-label').textContent=owed>0?'You owe this supplier':owed<0?'Supplier owes you':'All settled ✓';
   g('exp-sup-info-card').innerHTML=`<div style="font-size:15px;font-weight:800;margin-bottom:10px">${s.name}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-      <div><div class="stat-label">Phone</div><div>${s.phone||'—'}</div></div>
+      <div><div class="stat-label">Phone</div><div>${s.phone||'—'}${s.phone?`<a href="https://wa.me/${s.phone.replace(/[^0-9]/g,'')}" target="_blank" style="display:inline-flex;align-items:center;gap:3px;background:#25D366;color:#fff;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;text-decoration:none;margin-left:6px">💬 WA</a>`:''}</div></div>
       <div><div class="stat-label">Account Number</div><div class="mono">${s.account||'—'}</div></div>
       <div><div class="stat-label">Address</div><div>${s.addr||'—'}</div></div>
       <div><div class="stat-label">Bank</div><div>${s.bank||'—'}</div></div>
@@ -4044,10 +4121,16 @@ function addExpPurchItem(){
   g('exp-purch-items-list').appendChild(row);
 }
 function calcExpPurchRow(n){
-  const qty=parseFloat(g('epi-qty-'+n)?.value)||0;
-  const price=parseFloat(g('epi-price-'+n)?.value)||0;
-  const total=qty*price;
-  const el=g('epi-total-'+n);if(el)el.value=total?total.toFixed(2):'';
+  const costPerLargest=parseFloat(g('epi-price-'+n)?.value)||0;
+  const units=expPurchItemUnits[n]||[{name:'piece',qtyInParent:1}];
+  const ppu=[];ppu[units.length-1]=1;
+  for(let i=units.length-2;i>=0;i--)ppu[i]=ppu[i+1]*(units[i+1].qtyInParent||1);
+  let totalPieces=0,totalCost=0;const breakdown=[];
+  units.forEach((u,i)=>{const q=parseInt(g(`epi-uqty-${n}-${i}`)?.value)||0;if(q>0){totalPieces+=q*ppu[i];totalCost+=q*(costPerLargest*(ppu[i]/ppu[0]));breakdown.push(`${q} ${u.name||'unit'}`);}});
+  // Fallback: if no unit qtys entered, use old simple qty field
+  if(totalPieces===0){const q=parseFloat(g('epi-qty-'+n)?.value)||0;totalPieces=q*ppu[0];totalCost=q*costPerLargest;}
+  const el=g('epi-total-'+n);if(el)el.value=totalCost?totalCost.toFixed(2):'';
+  const ri=g('epi-row-info-'+n);if(ri)ri.textContent=breakdown.length?breakdown.join(' + ')+' = ₦'+fmt(totalCost):'—';
   calcExpPurchTotal();
 }
 function calcExpPurchTotal(){
@@ -4099,8 +4182,14 @@ function printExpSupStatement(){
   // expSupOwed>0 = we owe them (red), expSupOwed<0 = they owe us (green)
   const expFinalColor=expSupOwed>0?'#c0392b':expSupOwed<0?'#27ae60':'#333';
   const expFinalText=expSupOwed>0?'₦'+fmt(expSupOwed):expSupOwed<0?'−₦'+fmt(Math.abs(expSupOwed)):'₦0.00 (Settled)';
-  const leftInfo=`<strong>${s.name}</strong><br/>Phone: ${s.phone||'—'} · Account: ${s.account||'—'} · Bank: ${s.bank||'—'}`;
-  const _expStmtHtml=printHeaderHtml(leftInfo,'Expense Supplier Statement')
+  const _expClientLines=[
+    {text:s.name,bold:true},
+    ...(s.phone?[{label:'Phone:',text:s.phone}]:[]),
+    ...(s.account?[{label:'Account:',text:s.account}]:[]),
+    ...(s.bank?[{label:'Bank:',text:s.bank}]:[]),
+    ...(s.accname?[{label:'Acct Name:',text:s.accname}]:[])
+  ];
+  const _expStmtHtml=printHeaderHtml('','Expense Supplier Statement',_expClientLines)
     +'<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:8px"><thead><tr style="background:#f0f0f0"><th style="padding:6px;border:1px solid #ccc">Date</th><th style="padding:6px;border:1px solid #ccc">Description</th><th style="padding:6px;border:1px solid #ccc">Debit</th><th style="padding:6px;border:1px solid #ccc">Credit</th><th style="padding:6px;border:1px solid #ccc">Balance</th></tr></thead>'
     +'<tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:12px">No transactions</td></tr>')+'</tbody></table>'
     +`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border:1px solid #ddd;font-weight:bold;color:${expFinalColor}">Final Balance: ${expFinalText}${expSupOwed<0?' (Supplier owes YOU)':expSupOwed>0?' (You owe supplier)':''}</div></div>`;
@@ -4506,7 +4595,7 @@ function openCustDetail(id){
   if(ic)ic.innerHTML=`
     <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:10px">${c.name}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-      <div><div class="stat-label">Phone</div><div>${c.phone||'—'}</div></div>
+      <div><div class="stat-label">Phone</div><div>${c.phone||'—'}${c.phone?`<a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" style="display:inline-flex;align-items:center;gap:3px;background:#25D366;color:#fff;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;text-decoration:none;margin-left:6px">💬 WA</a>`:''}</div></div>
       <div><div class="stat-label">Address</div><div>${c.address||'—'}</div></div>
       <div><div class="stat-label">Last Visit</div><div style="font-size:11px;color:var(--muted)">${lastPurchase}</div></div>
       <div><div class="stat-label">Last Payment</div><div style="font-size:11px;color:var(--muted)">${lastPay}</div></div>
@@ -4691,21 +4780,16 @@ function printCashFlowStatement(){
     </tr>`;
   }).join('');
   const ss=DB.shopSettings||{};
-  const phones=[ss.phone1,ss.phone2,ss.phone3].filter(Boolean).join(' · ');
   const periodStr=(from||'Beginning')+' → '+(to||'Today');
   const _cfHtml=`<div style="font-family:Arial,sans-serif;padding:24px;color:#000">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-      <div>
-        <h2 style="font-size:16px;margin:0 0 3px">${ss.name||'Ado Salisu Sarki Mai Charbi'}</h2>
-        ${ss.address?`<p style="font-size:10px;color:#555;margin:1px 0">${ss.address}</p>`:''}
-        ${phones?`<p style="font-size:10px;color:#555;margin:1px 0">${phones}</p>`:''}
-      </div>
-      <div style="text-align:right;font-size:10px;color:#555">
-        <div style="font-size:14px;font-weight:800;color:#000">📋 Cash Flow Statement</div>
-        <div>Period: ${periodStr}</div><div>Printed: ${nowFormatted()}</div>
-      </div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <div style="font-size:15px;font-weight:800;color:#000">📋 Cash Flow Statement</div>
+      <div style="font-size:11px;color:#555">Printed: ${nowFormatted()}</div>
     </div>
-    <hr style="margin:8px 0 14px"/>
+    <hr style="margin:6px 0 10px"/>
+    ${getShopHeaderHtml()}
+    <div style="font-size:11px;color:#555;margin:6px 0">Period: ${periodStr}</div>
+    <hr style="margin:10px 0 14px"/>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
       <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:7px;padding:10px;text-align:center">
         <div style="font-size:9px;font-weight:700;color:#276749;text-transform:uppercase;margin-bottom:3px">Total Money In</div>
@@ -4803,21 +4887,38 @@ function genReports(){
 
 // =================== STAFF ===================
 function toggleStaffLoginFields(){
-  const role=v('st-role');
-  const loginFields=g('st-login-fields');
-  if(loginFields)loginFields.style.display=role==='wages_only'?'none':'block';
+  const r=v('st-role');
+  g('st-login-fields').style.display=r==='wages_only'?'none':'block';
+  const defaultTabs=DEFAULT_TABS[r]||[];
+  renderTabPermCheckboxes('st-perm-checkboxes',defaultTabs);
+  const permSection=g('st-tab-perms');
+  if(permSection)permSection.style.display=r==='admin'?'none':'block';
+}
+const TAB_LABELS={pos:'🛒 POS',inventory:'📦 Inventory',storerooms:'🏠 Storerooms',customers:'👥 Customers',suppliers:'🤝 Suppliers',receipts:'🧾 Receipts',reports:'📊 Reports',expenses:'💰 Expenses',settings:'⚙️ Settings'};
+function renderTabPermCheckboxes(containerId, selectedTabs){
+  const cont=g(containerId);if(!cont)return;
+  cont.innerHTML=ALL_TABS.map(tab=>`
+    <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:3px 0">
+      <input type="checkbox" value="${tab}" ${selectedTabs&&selectedTabs.includes(tab)?'checked':''} style="width:auto"/>
+      ${TAB_LABELS[tab]||tab}
+    </label>`).join('');
+}
+function getCheckedTabs(containerId){
+  const cont=g(containerId);if(!cont)return[];
+  return Array.from(cont.querySelectorAll('input[type=checkbox]:checked')).map(el=>el.value);
 }
 function addStaff(){
   const name=v('st-name');if(!name){alert('Name required.');return;}
   const role=v('st-role');
+  const tabs=role==='wages_only'?[]:getCheckedTabs('st-perm-checkboxes');
   if(role==='wages_only'){
-    DB.staff.push({id:ts(),name,username:'',password:'',role});
+    DB.staff.push({id:ts(),name,username:'',password:'',role,tabs});
     save();closeModal('modal-add-staff');renderStaff();sv('st-name','');return;
   }
   const user=v('st-user'),pass=v('st-pass');
   if(!user||!pass){alert('Username and password required.');return;}
   if(DB.staff.find(s=>s.username&&s.username.toLowerCase()===user.toLowerCase())){alert('Username taken!');return;}
-  DB.staff.push({id:ts(),name,username:user,password:pass,role});
+  DB.staff.push({id:ts(),name,username:user,password:pass,role,tabs});
   save();closeModal('modal-add-staff');renderStaff();
   ['st-name','st-user','st-pass'].forEach(id=>sv(id,''));
 }
@@ -4831,6 +4932,11 @@ function openEditStaff(id){
   if(currentUser.role!=='admin'&&currentUser.id!==id){alert('You can only edit your own profile.');return;}
   sv('est-id',id);sv('est-name',s.name);sv('est-username',s.username||'');sv('est-pass','');sv('est-pass2','');sv('est-photo-data',s.photo||'');
   g('est-photo-wrap').innerHTML=s.photo?`<img src="${s.photo}" style="width:72px;height:72px;border-radius:50%;object-fit:cover"/>`:'👤';
+  // Render tab perm checkboxes with current staff tabs
+  const defaultTabs=DEFAULT_TABS[s.role]||[];
+  renderTabPermCheckboxes('est-perm-checkboxes', s.tabs||defaultTabs);
+  const permSection=g('est-tab-perms');
+  if(permSection)permSection.style.display=s.role==='admin'?'none':'block';
   openModal('modal-edit-staff');
 }
 function saveEditStaff(){
@@ -4840,7 +4946,9 @@ function saveEditStaff(){
   if(DB.staff.find(x=>x.id!==id&&x.username.toLowerCase()===username.toLowerCase())){alert('Username already taken!');return;}
   if(pass||pass2){if(pass!==pass2){alert('Passwords do not match!');return;}if(pass.length<4){alert('Password must be at least 4 characters.');return;}s.password=pass;}
   s.name=name;s.username=username;const photo=v('est-photo-data');if(photo)s.photo=photo;
-  if(currentUser&&currentUser.id===id){currentUser.name=name;currentUser.username=username;updateNavAvatar();}
+  // Save tab permissions (only for non-admin)
+  if(s.role!=='admin'){s.tabs=getCheckedTabs('est-perm-checkboxes');}
+  if(currentUser&&currentUser.id===id){currentUser.name=name;currentUser.username=username;currentUser.tabs=s.tabs;updateNavAvatar();}
   save();closeModal('modal-edit-staff');renderStaff();
 }
 function renderStaff(){
@@ -5517,7 +5625,6 @@ function addDeliveryCartRow(){
         <label>Item</label>
         <div style="display:flex;gap:6px;align-items:center">
           <select id="dcr-item-${n}" onchange="onDeliveryCartItemChange(${n})" style="flex:1"><option value="">— Select item —</option>${itemOpts}</select>
-          <button class="btn btn-ghost btn-sm" style="white-space:nowrap;flex-shrink:0" onclick="openAddItemFromDelivery(${n})" title="Add new product">➕ New</button>
         </div>
       </div>
       <div id="dcr-qty-section-${n}" style="display:none">
@@ -5868,13 +5975,17 @@ function hideAITyping() {
 
 // =================== FEATURE 2: SUPPLIER PRESELECT & DESTINATION DISTRIBUTION ===================
 function openAddItemFromSupplier(){
+  const supId=currentSupId||'';
   openAddItemModal('shop');
-  // Pre-select current supplier
+  // Pre-select the current supplier — fillSupSelects() runs inside openAddItemModal
+  // Use a short timeout so the select is populated before we set the value
   setTimeout(()=>{
     const sel=g('fi-sup');
-    if(sel&&currentSupId)sel.value=currentSupId;
-    sv('fi-from-supplier',currentSupId||'');
-  },50);
+    if(sel&&supId){sel.value=supId;}
+    sv('fi-from-supplier',supId);
+    // After saving, return to supplier profile
+    window._addItemReturnToSupplier=true;
+  },80);
 }
 
 let fiDestCount=0;
@@ -5890,17 +6001,46 @@ function addFiDestRow(){
   const allDests=[{val:'shop',label:'🏪 Shop'},...ROOMS.map(r=>({val:r,label:'🏠 '+r}))];
   const opts=allDests.map(d=>`<option value="${d.val}">${d.label}</option>`).join('');
   const row=document.createElement('div');row.id='fidr-'+n;
-  row.style.cssText='display:grid;grid-template-columns:1fr auto;gap:8px;align-items:flex-end;margin-bottom:6px';
-  row.innerHTML=`<div><label style="font-size:10px">Destination</label><select id="fidr-dest-${n}">${opts}</select></div>
-  <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="if(document.querySelectorAll('[id^=fidr-]').length>1)g('fidr-${n}').remove()">×</button>`;
+  row.style.cssText='border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px';
+  row.innerHTML=`<div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px">
+    <div style="flex:1"><label style="font-size:10px">Destination</label><select id="fidr-dest-${n}" style="width:100%">${opts}</select></div>
+    <button class="btn btn-danger btn-sm" onclick="if(document.querySelectorAll('[id^=fidr-]').length>1){g('fidr-${n}').remove();}">×</button>
+  </div>
+  <div id="fidr-unit-qtys-${n}" style="font-size:11px;color:var(--muted)">Enter item quantities above first.</div>`;
   cont.appendChild(row);
+  renderFiDestUnitRows();
+}
+function renderFiDestUnitRows(){
+  // For each destination row, render unit qty inputs based on current newItemUnits
+  document.querySelectorAll('[id^="fidr-"]').forEach(row=>{
+    const n=row.id.replace('fidr-','');
+    const cont=g('fidr-unit-qtys-'+n);if(!cont)return;
+    const validUnits=newItemUnits.filter(u=>u.name);
+    if(!validUnits.length){cont.innerHTML='<span style="font-size:11px;color:var(--muted)">Define units above first.</span>';return;}
+    const ppu=[];ppu[validUnits.length-1]=1;
+    for(let i=validUnits.length-2;i>=0;i--)ppu[i]=ppu[i+1]*(validUnits[i+1].qtyInParent||1);
+    cont.innerHTML=validUnits.map((u,i)=>`<div class="flex items-center gap8 mb6">
+      <label style="width:90px;text-transform:none;font-size:12px;font-weight:600;color:var(--text)">${u.name}</label>
+      <input type="number" id="fidr-uqty-${n}-${i}" placeholder="0" min="0" style="width:70px" class="no-spin"/>
+      <span class="text-muted text-sm">${ppu[i]>1?'('+ppu[i]+' '+validUnits[validUnits.length-1].name+' each)':''}</span>
+    </div>`).join('');
+  });
 }
 function getFiDestinations(){
-  const dests=[];
+  // Returns [{dest, totalPieces, breakdown}]
+  const results=[];
+  const validUnits=newItemUnits.filter(u=>u.name);
+  if(!validUnits.length)return[];
+  const ppu=[];ppu[validUnits.length-1]=1;
+  for(let i=validUnits.length-2;i>=0;i--)ppu[i]=ppu[i+1]*(validUnits[i+1].qtyInParent||1);
   document.querySelectorAll('[id^="fidr-dest-"]').forEach(sel=>{
-    if(sel.value&&!dests.includes(sel.value))dests.push(sel.value);
+    const n=sel.id.replace('fidr-dest-','');
+    const dest=sel.value;if(!dest)return;
+    let totalPieces=0;const breakdown=[];
+    validUnits.forEach((u,i)=>{const q=parseInt(g(`fidr-uqty-${n}-${i}`)?.value)||0;if(q>0){totalPieces+=q*ppu[i];breakdown.push(`${q} ${u.name}`);}});
+    if(totalPieces>0)results.push({dest,totalPieces,breakdown:breakdown.join(' + ')});
   });
-  return dests.length?dests:['shop'];
+  return results;
 }
 
 // =================== FEATURE 3: SELL PRICE AUTO-CALCULATION ===================
@@ -5919,39 +6059,55 @@ function calcNewItemSubSellPrices(changedIdx){
   }
 }
 
-// =================== FEATURE 4: EXP PURCH ITEM WITH UNIT HIERARCHY ===================
+// =================== FEATURE 4 & 5: EXP PURCH ITEM WITH UNIT HIERARCHY + UNIT QTY ===================
 let expPurchItemUnits={};
 function addExpPurchItem(){
   expPurchCount++;const n=expPurchCount;
   const saved=DB.savedSupplyItems||[];
   const opts=saved.map(i=>`<option value="${i}">${i}</option>`).join('');
-  // Build item options from DB
-  const dbOpts='<option value="">— New item —</option>'+(DB.items||[]).map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
   const row=document.createElement('div');row.id='epi-'+n;
   row.style.cssText='background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px';
   row.innerHTML=`
-    <div style="display:grid;grid-template-columns:1fr 70px 100px 90px auto;gap:7px;align-items:flex-end;margin-bottom:8px">
-      <div><label>Item (existing or new)</label>
-        <select id="epi-item-sel-${n}" onchange="onExpPurchItemChange(${n})"><option value="">— Select or type new —</option>${(DB.items||[]).map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select>
-        <input list="spl-${n}" id="epi-name-${n}" placeholder="Or type new item name..." oninput="calcExpPurchRow(${n})" style="margin-top:4px"/>
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px">
+      <div style="flex:2">
+        <label>Item</label>
+        <select id="epi-item-sel-${n}" onchange="onExpPurchItemChange(${n})" style="width:100%;margin-bottom:4px"><option value="">— Select existing or type new below —</option>${(DB.items||[]).map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select>
+        <input list="spl-${n}" id="epi-name-${n}" placeholder="New item name (if not in list)..." oninput="calcExpPurchRow(${n})" style="width:100%"/>
         <datalist id="spl-${n}">${opts}</datalist>
       </div>
-      <div><label>Qty</label><input type="number" id="epi-qty-${n}" placeholder="1" min="1" value="1" oninput="calcExpPurchRow(${n})"/></div>
-      <div><label>Unit Price ₦</label><input type="number" id="epi-price-${n}" placeholder="0" oninput="calcExpPurchRow(${n})"/></div>
-      <div><label>Line Total</label><input type="number" id="epi-total-${n}" placeholder="0" readonly style="color:var(--accent3);background:transparent"/></div>
-      <button class="btn btn-danger btn-sm" style="margin-top:18px" onclick="g('epi-${n}').remove();calcExpPurchTotal()">×</button>
+      <div style="flex:1"><label>Cost ₦/Largest Unit</label><input type="number" id="epi-price-${n}" placeholder="0" class="no-spin" oninput="calcExpPurchRow(${n})"/></div>
+      <div style="flex:0 0 90px"><label>Line Total</label><input type="number" id="epi-total-${n}" placeholder="0" readonly style="color:var(--accent3);background:transparent"/></div>
+      <button class="btn btn-danger btn-sm" style="align-self:flex-end" onclick="g('epi-${n}').remove();calcExpPurchTotal()">×</button>
     </div>
-    <div id="epi-unit-section-${n}" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Unit Hierarchy for new item</div>
+    <!-- Unit hierarchy (for new items) -->
+    <div id="epi-unit-section-${n}" style="border-top:1px solid var(--border);padding-top:8px;margin-bottom:8px">
+      <div class="flex items-center justify-between mb6">
+        <div style="font-size:11px;font-weight:700;color:var(--muted)">📐 Unit Hierarchy</div>
+        <button class="btn btn-ghost btn-sm" onclick="addExpPurchUnitRow(${n})">+ Add Tier</button>
+      </div>
       <div id="epi-unit-rows-${n}"></div>
-      <button class="btn btn-ghost btn-sm" onclick="addExpPurchUnitRow(${n})">+ Add Unit Level</button>
+    </div>
+    <!-- Quantity per unit tier -->
+    <div id="epi-qty-section-${n}" style="border-top:1px solid var(--border);padding-top:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">Quantity Purchased</div>
+      <div id="epi-unit-qty-inputs-${n}"></div>
+      <div style="font-size:12px;font-weight:700;color:var(--accent3);margin-top:4px">Row total: <span id="epi-row-info-${n}">—</span></div>
     </div>`;
   g('exp-purch-items-list').appendChild(row);
-  // Init with one unit row for new items
   expPurchItemUnits[n]=[{name:'piece',qtyInParent:1,costPrice:0,sellPrice:0}];
-  // Show unit section by default for new items
   renderExpPurchUnitRows(n);
-  g('epi-unit-section-'+n).style.display='block';
+  renderExpPurchUnitQtyInputs(n);
+}
+function renderExpPurchUnitQtyInputs(n){
+  const cont=g('epi-unit-qty-inputs-'+n);if(!cont)return;
+  const units=expPurchItemUnits[n]||[{name:'piece',qtyInParent:1}];
+  const ppu=[];ppu[units.length-1]=1;
+  for(let i=units.length-2;i>=0;i--)ppu[i]=ppu[i+1]*(units[i+1].qtyInParent||1);
+  cont.innerHTML=units.map((u,i)=>`<div class="flex items-center gap8 mb6">
+    <label style="width:90px;text-transform:none;font-size:12px;font-weight:600;color:var(--text)">${u.name||'Unit '+(i+1)}</label>
+    <input type="number" id="epi-uqty-${n}-${i}" placeholder="0" min="0" style="width:70px" class="no-spin" oninput="calcExpPurchRow(${n})"/>
+    <span class="text-muted text-sm">${ppu[i]>1?'('+ppu[i]+' '+(units[units.length-1].name||'pcs')+' each)':''}</span>
+  </div>`).join('');
 }
 function onExpPurchItemChange(n){
   const sel=g('epi-item-sel-'+n);
@@ -5972,16 +6128,18 @@ function renderExpPurchUnitRows(n){
   cont.innerHTML=units.map((u,i)=>`
     <div style="display:grid;grid-template-columns:1fr ${i>0?'80px ':''} auto;gap:6px;align-items:flex-end;margin-bottom:6px">
       <div><label style="font-size:10px">${i===0?'Unit (Largest)':'Unit Name'}</label>
-        <input value="${u.name||''}" placeholder="${i===0?'e.g. Carton':'e.g. Roll'}" oninput="expPurchItemUnits[${n}][${i}].name=this.value"/></div>
+        <input value="${u.name||''}" placeholder="${i===0?'e.g. Carton':'e.g. Roll'}" oninput="expPurchItemUnits[${n}][${i}].name=this.value;renderExpPurchUnitRows(${n})"/></div>
       ${i>0?`<div><label style="font-size:10px">Per Parent</label>
-        <input type="number" value="${u.qtyInParent||1}" placeholder="e.g. 8" oninput="expPurchItemUnits[${n}][${i}].qtyInParent=parseFloat(this.value)||1"/></div>`:''}
+        <input type="number" class="no-spin" value="${u.qtyInParent||1}" placeholder="e.g. 8" oninput="expPurchItemUnits[${n}][${i}].qtyInParent=parseFloat(this.value)||1;renderExpPurchUnitRows(${n})"/></div>`:''}
       <button class="btn btn-danger btn-sm" ${units.length<=1?'disabled':''} onclick="expPurchItemUnits[${n}].splice(${i},1);renderExpPurchUnitRows(${n})">×</button>
     </div>`).join('');
+  renderExpPurchUnitQtyInputs(n);
 }
 function addExpPurchUnitRow(n){
   if(!expPurchItemUnits[n])expPurchItemUnits[n]=[];
   expPurchItemUnits[n].push({name:'',qtyInParent:1,costPrice:0,sellPrice:0});
   renderExpPurchUnitRows(n);
+  renderExpPurchUnitQtyInputs(n);
 }
 
 // Override saveExpSupPurchase to handle unit hierarchy
@@ -5991,46 +6149,39 @@ function saveExpSupPurchase(){
   const now=new Date().toLocaleString();
   document.querySelectorAll('[id^="epi-name-"]').forEach(el=>{
     const n=el.id.replace('epi-name-','');
-    // Check if existing item was selected
     const sel=g('epi-item-sel-'+n);
     const existingId=sel&&sel.value?sel.value:'';
     const name=existingId?(DB.items.find(x=>x.id===existingId)?.name||el.value.trim()):el.value.trim();
-    const qty=parseFloat(g('epi-qty-'+n)?.value)||1;
-    const unitPrice=parseFloat(g('epi-price-'+n)?.value)||0;
-    const lineTotal=parseFloat(g('epi-total-'+n)?.value)||(qty*unitPrice);
+    const costPerLargest=parseFloat(g('epi-price-'+n)?.value)||0;
+    const lineTotal=parseFloat(g('epi-total-'+n)?.value)||0;
     if(name&&lineTotal>0){
-      items.push({name,qty,unitPrice,price:lineTotal,lineTotal,existingId});
+      // Compute qty breakdown
+      const unitDefs=expPurchItemUnits[n]||[{name:'piece',qtyInParent:1}];
+      const ppu=[];ppu[unitDefs.length-1]=1;
+      for(let i=unitDefs.length-2;i>=0;i--)ppu[i]=ppu[i+1]*(unitDefs[i+1].qtyInParent||1);
+      let totalPieces=0;const bdParts=[];
+      unitDefs.forEach((u,i)=>{const q=parseInt(g(`epi-uqty-${n}-${i}`)?.value)||0;if(q>0){totalPieces+=q*ppu[i];bdParts.push(`${q} ${u.name||'unit'}`);}});
+      // Fallback simple qty
+      if(totalPieces===0){const q=parseFloat(g('epi-qty-'+n)?.value)||1;totalPieces=q*ppu[0];}
+      const bdStr=bdParts.join(' + ')||`${totalPieces} pcs`;
+      items.push({name,qty:totalPieces,unitPrice:costPerLargest,price:lineTotal,lineTotal,existingId,breakdown:bdStr});
       total+=lineTotal;
       if(!DB.savedSupplyItems)DB.savedSupplyItems=[];
       if(!DB.savedSupplyItems.includes(name))DB.savedSupplyItems.push(name);
-      // If new item (no existingId), create it with unit hierarchy
       if(!existingId){
-        const unitDefs=expPurchItemUnits[n]||[{name:'piece',qtyInParent:1}];
         unitDefs.forEach((u,i)=>{if(!u.id)u.id='u'+i+ts();});
-        // Set cost prices
-        unitDefs[0].costPrice=unitPrice;
-        const ppu=[];ppu[unitDefs.length-1]=1;
-        for(let i=unitDefs.length-2;i>=0;i--)ppu[i]=ppu[i+1]*(unitDefs[i+1].qtyInParent||1);
-        for(let i=1;i<unitDefs.length;i++){unitDefs[i].costPrice=parseFloat((unitPrice*(ppu[i]/ppu[0])).toFixed(4));}
-        let totalPieces=qty*ppu[0];
-        const existing=DB.items.find(x=>x.name.toLowerCase()===name.toLowerCase());
-        if(!existing){
-          const newItem={id:ts(),name,price:0,cost:unitPrice,qty:totalPieces,
+        unitDefs[0].costPrice=costPerLargest;
+        for(let i=1;i<unitDefs.length;i++){unitDefs[i].costPrice=parseFloat((costPerLargest*(ppu[i]/ppu[0])).toFixed(4));}
+        const existing2=DB.items.find(x=>x.name.toLowerCase()===name.toLowerCase());
+        if(!existing2){
+          const newItem={id:ts(),name,price:0,cost:costPerLargest,qty:totalPieces,
             unit:unitDefs[unitDefs.length-1].name,units:unitDefs,
             low:5,expiry:'',supplierId:'',img:'',dateAdded:now,lastRestocked:now};
           DB.items.push(newItem);
-        } else {
-          existing.qty+=totalPieces;existing.lastRestocked=now;
-        }
+        } else {existing2.qty+=totalPieces;existing2.lastRestocked=now;}
       } else {
-        // Existing item — add stock
         const item=DB.items.find(x=>x.id===existingId);
-        if(item){
-          const units=getUnits(item);
-          const ppu=[];ppu[units.length-1]=1;
-          for(let i=units.length-2;i>=0;i--)ppu[i]=ppu[i+1]*units[i+1].qtyInParent;
-          item.qty+=qty*ppu[0];item.lastRestocked=now;
-        }
+        if(item){item.qty+=totalPieces;item.lastRestocked=now;}
       }
     }
   });
@@ -6166,42 +6317,86 @@ function saveAddItem(){
     low:ii('fi-low')||5,expiry:v('fi-expiry'),supplierId:supId,img:v('fi-img'),
     dateAdded:now,lastRestocked:totalPieces>0?now:null};
   DB.items.push(newItem);
-  // Multi-destination distribution
+  // Multi-destination distribution (new format: [{dest, totalPieces, breakdown}])
   const destinations=getFiDestinations();
-  const primaryDest=destinations[0]||dest||'shop';
-  if(totalPieces>0){
-    const isRoomPrimary=primaryDest!=='shop'&&ROOMS.includes(primaryDest);
-    if(isRoomPrimary){
-      DB.storerooms[primaryDest].push({id:newItem.id,name,qty:totalPieces,price:newItem.price,dateAdded:now});
-      DB.roomLogs.unshift({type:'IN',room:primaryDest,item:name,qty:totalPieces,breakdown:breakdown.join(' + '),date:now,by:currentUser.name});
-    } else {newItem.qty=totalPieces;}
-    // Additional destinations — distribute remaining (logged as transfers)
-    for(let i=1;i<destinations.length;i++){
-      const d=destinations[i];
-      if(d&&d!==primaryDest&&ROOMS.includes(d)){
-        DB.roomLogs.unshift({type:'IN',room:d,item:name,qty:0,breakdown:'(additional destination)',date:now,by:currentUser.name});
+  let grandTotalPieces=0;
+  if(destinations.length>0){
+    destinations.forEach(({dest:dDest,totalPieces:dQty,breakdown:dBD})=>{
+      if(dQty<=0)return;
+      grandTotalPieces+=dQty;
+      const isRoom=dDest!=='shop'&&ROOMS.includes(dDest);
+      if(isRoom){
+        if(!DB.storerooms[dDest])DB.storerooms[dDest]=[];
+        const ex=DB.storerooms[dDest].find(x=>x.id===newItem.id);
+        if(ex)ex.qty+=dQty;else DB.storerooms[dDest].push({id:newItem.id,name,qty:dQty,price:newItem.price,dateAdded:now});
+        DB.roomLogs.unshift({type:'IN',room:dDest,item:name,qty:dQty,breakdown:dBD,date:now,by:currentUser.name});
+      } else {
+        newItem.qty+=dQty;newItem.lastRestocked=now;
       }
-    }
+    });
     // Record delivery in supplier history
-    if(supId){
+    if(supId&&grandTotalPieces>0){
       const sup=DB.suppliers.find(x=>x.id===supId);
       if(sup){
         if(!sup.deliveries)sup.deliveries=[];
-        const totalCost=(newItemUnits[0].costPrice||0)*(totalPieces/ppu[0]);
-        const distInfo=destinations.map(d=>({dest:d,qty:d===primaryDest?totalPieces:0}));
+        const totalCost=(newItemUnits[0].costPrice||0)*(grandTotalPieces/ppu[0]);
+        const distInfo=destinations.map(({dest:dd,totalPieces:dq})=>({dest:dd,qty:dq}));
         sup.deliveries.unshift({id:ts(),date:now,item:name,itemId:newItem.id,
-          breakdown:breakdown.join(' + '),totalPieces,costPerLargest:newItemUnits[0].costPrice||0,
-          totalCost,largestUnit:newItemUnits[0].name,distributions:distInfo,supplierId:supId});
+          breakdown:destinations.map(d=>d.breakdown).join(' | '),totalPieces:grandTotalPieces,
+          costPerLargest:newItemUnits[0].costPrice||0,totalCost,largestUnit:newItemUnits[0].name,
+          distributions:distInfo,supplierId:supId});
         if(sup.totalOwed===undefined)sup.totalOwed=0;
         sup.totalOwed+=totalCost;
       }
     }
+  } else if(totalPieces>0){
+    // Fallback: if no destinations defined but initial qty given, add to shop
+    newItem.qty=totalPieces;newItem.lastRestocked=now;
   }
   save();closeModal('modal-add-item');
   renderInventory();renderInvStats();renderPosItems();
   if(currentRoom){renderRoomStats();renderRoomItems();renderRoomLog();}
   refreshDeliveryCartItemSelects(newItem.id);
   toast('"'+name+'" created!','success');
+// =================== WHATSAPP STATEMENT HELPER ===================
+function sendStmtWhatsApp(type){
+  let phone='',name='',text='';
+  const ss=DB.shopSettings||{};
+  const shopName=ss.name||'Our Shop';
+  if(type==='cust'){
+    const custId=v('cust-stmt-id');const c=DB.customers.find(x=>x.id===custId);if(!c)return;
+    phone=c.phone||'';name=c.name;
+    const bal=c.debt||0;
+    text=`Hello ${name},
+
+This is your account statement from ${shopName}.
+
+Balance: ₦${fmt(bal)}${bal>0?' (you owe us)':bal<0?' (we owe you)':' (settled)'}
+
+Thank you for your business!`;
+  } else if(type==='sup'){
+    if(!currentSupId)return;const s=DB.suppliers.find(x=>x.id===currentSupId);if(!s)return;
+    phone=s.phone||'';name=s.name;
+    const owed=s.totalOwed||0;
+    text=`Hello ${name},
+
+This is your account statement from ${shopName}.
+
+Balance: ₦${fmt(Math.abs(owed))}${owed>0?' (we owe you)':owed<0?' (you owe us)':' (settled)'}
+
+Thank you!`;
+  }
+  if(!phone){alert('No phone number on file for this contact.');return;}
+  const cleanPhone=phone.replace(/[^0-9]/g,'');
+  const url='https://wa.me/'+cleanPhone+'?text='+encodeURIComponent(text);
+  window.open(url,'_blank');
+}
+
+  // If opened from supplier profile, refresh the supplier detail view
+  if(window._addItemReturnToSupplier&&currentSupId){
+    window._addItemReturnToSupplier=false;
+    openSupDetail(currentSupId);
+  }
 }
 
 
